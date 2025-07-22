@@ -275,18 +275,25 @@ class TimeFlowCard extends HTMLElement {
   // Helper for consistent date parsing across platforms
   _parseISODate(dateString) {
     try {
-      // Handle ISO format strings properly (most reliable cross-platform)
       if (typeof dateString === 'string' && dateString.includes('T')) {
-        // ISO format parsing is most consistent across browsers/devices
-        const [datePart, timePart] = dateString.split('T');
-        const [year, month, day] = datePart.split('-').map(Number);
+        // Check if the string contains timezone information (Z, +XX:XX, -XX:XX)
+        const hasTimezone = /[+-]\d{2}:\d{2}$|Z$/.test(dateString);
         
-        if (timePart && timePart.includes(':')) {
-          const [hour, minute, secondPart] = timePart.split(':');
-          const second = secondPart ? parseInt(secondPart) : 0;
-          return new Date(year, month - 1, day, hour, minute, second).getTime();
+        if (hasTimezone) {
+          // For ISO strings with timezone info, use native Date parsing to preserve timezone
+          return new Date(dateString).getTime();
         } else {
-          return new Date(year, month - 1, day).getTime();
+          // For timezone-less ISO strings, use manual parsing for cross-platform consistency
+          const [datePart, timePart] = dateString.split('T');
+          const [year, month, day] = datePart.split('-').map(Number);
+          
+          if (timePart && timePart.includes(':')) {
+            const [hour, minute, secondPart] = timePart.split(':');
+            const second = secondPart ? parseInt(secondPart) : 0;
+            return new Date(year, month - 1, day, hour, minute, second).getTime();
+          } else {
+            return new Date(year, month - 1, day).getTime();
+          }
         }
       } else {
         // Fallback to regular parsing for other formats
@@ -1325,7 +1332,7 @@ class TimeFlowCard extends HTMLElement {
   }
 
   static get version() {
-    return '2.0.0';
+    return '2.0.1';
   }
 }
 
