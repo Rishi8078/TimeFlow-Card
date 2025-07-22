@@ -3,6 +3,5 @@
   "render_readme": true,
   "filename": "timeflow-card.js",
   "content_in_root": false,
-  "domains": ["sensor", "input_datetime"],
   "homeassistant": "2023.3.0"
 }
