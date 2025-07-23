@@ -660,7 +660,17 @@ class TimeFlowCard extends HTMLElement {
       if (entity.state === 'unknown' || entity.state === 'unavailable') {
         return null;
       }
-      return entity.state;
+      
+      // For entity timestamps, strip timezone info to treat as local time
+      // This provides more intuitive behavior for users
+      let entityValue = entity.state;
+      if (typeof entityValue === 'string' && entityValue.includes('T')) {
+        // Remove timezone information (+XX:XX, -XX:XX, Z) from entity values
+        // This ensures entity timestamps are always treated as local time
+        entityValue = entityValue.replace(/([+-]\d{2}:\d{2}|Z)$/, '');
+      }
+      
+      return entityValue;
     }
     
     // Return plain string/value

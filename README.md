@@ -253,6 +253,42 @@ cards:
       progress_circle:
         - transform: scale(1.0)
 ```
+
+## 🆕 What's New in v2.0.2
+
+### 🎉 Toggleable Celebration Animation
+Control whether the card shows a celebration animation when countdown expires:
+```yaml
+expired_animation: true   # Enable animation (default)
+expired_animation: false  # Disable animation for silent completion
+```
+
+### 🌍 Enhanced Timezone Support
+**Smart Entity Handling** - Automatically treats entity timestamps as local time for intuitive behavior:
+
+**Before:** Entity `2025-07-22T14:30:00+00:00` → Treated as UTC → Wrong local time interpretation
+**After:** Entity `2025-07-22T14:30:00+00:00` → Timezone stripped → Treated as local 2:30 PM → Correct countdown
+
+- **Timezone Detection**: Preserves timezone info in ISO strings when provided directly
+- **Cross-Platform Consistency**: Uniform date parsing across all browsers and devices
+
+### 🕰️ Timezone Handling
+
+TimeFlow Card includes intelligent timezone handling:
+
+- **Entity Values**: Automatically strips timezone info to treat as local time for intuitive behavior
+- **ISO Dates**: Preserves timezone information when present in direct date strings
+- **Cross-Platform**: Consistent parsing across all browsers and devices
+
+**Example:**
+```yaml
+# Entity with timezone - automatically converted to local time
+target_date: sensor.my_event_time  # "2025-07-22T14:30:00+00:00" becomes local 2:30 PM
+
+# Direct ISO string - timezone preserved
+target_date: "2025-07-22T14:30:00+00:00"  # Treated as specified timezone
+```
+
 ### 🎨 Styling Tips
 
 **Responsive Design:**
