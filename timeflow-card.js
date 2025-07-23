@@ -1347,7 +1347,7 @@ class TimeFlowCard extends HTMLElement {
   }
 
   static get version() {
-    return '2.0.1';
+    return '2.0.2';
   }
 }
 

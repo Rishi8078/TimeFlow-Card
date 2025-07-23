@@ -308,7 +308,7 @@ If you find TimeFlow Card useful, consider buying me a coffee! Your support help
 
 ---
 
-**TimeFlow Card v2.0.1 - Made with ❤️ for the Home Assistant community**
+**TimeFlow Card v2.0.2 - Made with ❤️ for the Home Assistant community**
 <!-- Link references -->
 [ha_badge]: https://img.shields.io/badge/Home%20Assistant-Compatible-green
 [ha_link]: https://www.home-assistant.io/
