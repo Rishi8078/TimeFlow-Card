@@ -4,7 +4,7 @@
 
 A beautiful countdown timer card for Home Assistant with animated progress circle and intelligent time formatting.
 
-![TimeFlow Card Preview](assets/assets.JPG)
+![TimeFlow Card Preview](assets/assets.png)
 
 ## ✨ Features
 
