@@ -49,7 +49,6 @@ resources:
 | `width/height` | string | `null` | Card dimensions (e.g., "200px", "100%") |
 | `aspect_ratio` | string | `"2/1"` | Card aspect ratio (e.g., "1/1", "3/2") |
 | `icon_size` | string | `"100px"` | Progress circle size (auto-scales by default) |
-| `stroke_width` | number | `15` | Progress circle thickness (auto-scales by default) |
 | `color` | string | `"#FCFCFC"` | Text color (supports templates) |
 | `background_color` | string | `"#000001"` | Card background (supports templates) |
 | `progress_color` | string | `"#C366CD"` | Progress circle color (supports templates) |
