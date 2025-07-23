@@ -8,16 +8,12 @@ A beautiful countdown timer card for Home Assistant with animated progress circl
 
 ## ✨ Features
 
-- 🎯 **Animated SVG progress circle** with dynamic scaling and proportional sizing
-- 🕒 **Smart time display** with natural language formatting and intelligent unit cascading
-- 🎨 **Fully customizable** colors, sizes, and time units
-- 🔗 **Entity support** for dynamic countdowns with real-time updates
-- 🌍 **Advanced timezone handling** with intelligent parsing for Home Assistant entities
-- 📝 **Template support** for dynamic titles, colors, and dates using Home Assistant templating
-- 🎉 **Toggleable celebration animation** when countdown expires
-- 🔧 **Cross-platform date parsing** ensuring consistent behavior across all browsers
-- 💅 **Card-mod compatibility** for advanced styling and theming
-- 📱 **Responsive design** with automatic font and icon scaling
+-  **Real-time updates** with 1-second precision
+-  **Animated SVG progress circle** with dynamic scaling and proportional sizing
+-  **Smart time display** with natural language formatting and intelligent unit cascading
+-  **Fully customizable** colors, sizes, and time units
+-  **Entity support** for dynamic countdowns with real-time updates
+-  **Template support** for dynamic titles, colors, and dates using Home Assistant templating
 
 ## 🚀 Installation
 
@@ -54,9 +50,9 @@ resources:
 | `aspect_ratio` | string | `"2/1"` | Card aspect ratio (e.g., "1/1", "3/2") |
 | `icon_size` | string | `"100px"` | Progress circle size (auto-scales by default) |
 | `stroke_width` | number | `15` | Progress circle thickness (auto-scales by default) |
-| `color` | string | `"#ffffff"` | Text color (supports templates) |
-| `background_color` | string | `"#1976d2"` | Card background (supports templates) |
-| `progress_color` | string | `"#4CAF50"` | Progress circle color (supports templates) |
+| `color` | string | `"#FCFCFC"` | Text color (supports templates) |
+| `background_color` | string | `"#000001"` | Card background (supports templates) |
+| `progress_color` | string | `"#C366CD"` | Progress circle color (supports templates) |
 | `styles` | object | `{}` | Custom CSS styles for card elements |
 | `card_mod` | object | `null` | [Card-mod](https://github.com/thomasloven/lovelace-card-mod) styling |
 
@@ -257,84 +253,12 @@ cards:
       progress_circle:
         - transform: scale(1.0)
 ```
-
-## 🆕 What's New in v2.0.1
-
-### 🎉 Toggleable Celebration Animation
-Control whether the card shows a celebration animation when countdown expires:
-```yaml
-expired_animation: true   # Enable animation (default)
-expired_animation: false  # Disable animation for silent completion
-```
-
-### 🌍 Enhanced Timezone Support
-- **Smart Entity Handling**: Automatically treats entity timestamps as local time
-- **Timezone Detection**: Preserves timezone info in ISO strings when present
-- **Cross-Platform Consistency**: Uniform date parsing across all browsers
-
-### 📝 Template Engine
-Full Home Assistant template support for dynamic content:
-```yaml
-title: "{{ states('sensor.event_name') }} in"
-target_date: "{{ state_attr('calendar.next_event', 'start_time') }}"
-color: "{{ '#ff0000' if is_state('binary_sensor.urgent', 'on') else '#ffffff' }}"
-```
-
-### 🎨 Advanced Styling
-- **Proportional Scaling**: Icon and font sizes automatically adjust to card dimensions
-- **CSS Custom Properties**: Better theming support with CSS variables
-- **Performance Optimizations**: Cached DOM elements and smart re-rendering
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Card not showing?**
-- Check Lovelace resources are added correctly
-- Verify `target_date` format: `"YYYY-MM-DDTHH:mm:ss"`
-- Clear browser cache (Ctrl+F5 or Cmd+Shift+R)
-- Restart Home Assistant if needed
-
-**Entity issues?**
-- Ensure entity exists and has valid datetime state
-- Use ISO format in entity states
-- Check entity availability in Developer Tools
-- For timezone issues, the card automatically handles local time interpretation
-
-**Template problems?**
-- Test templates in Developer Tools → Template tab
-- Ensure fallback values using the `or` operator: `{{ states('sensor.date') or '2025-12-31T23:59:59' }}`
-- Check template syntax and entity availability
-
-**Animation not working?**
-- Verify `expired_animation: true` is set in configuration
-- Check if countdown has actually expired
-- Clear browser cache if animation appears stuck
-
-### 🕰️ Timezone Handling
-
-TimeFlow Card includes intelligent timezone handling:
-
-- **Entity Values**: Automatically strips timezone info to treat as local time
-- **ISO Dates**: Preserves timezone information when present
-- **Cross-Platform**: Consistent parsing across all browsers and devices
-
 ### 🎨 Styling Tips
 
 **Responsive Design:**
 - Use `aspect_ratio` instead of fixed `height` for better responsiveness
 - Set `width` in percentages for fluid layouts: `width: "100%"`
 - Use relative font sizes in styles: `font-size: 1.2rem`
-
-**Performance:**
-- Templates are cached for 5 seconds to optimize performance
-- DOM elements are cached and selectively updated
-- Use specific selectors in custom styles for better performance
-
-**Dark Mode:**
-- The card automatically adapts to dark mode themes
-- Use CSS variables or conditional templates for theme-aware colors
-
 
 ## 📄 License
 

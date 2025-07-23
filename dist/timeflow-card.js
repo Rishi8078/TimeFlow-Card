@@ -4,7 +4,7 @@ class ProgressCircle extends HTMLElement {
     super();
     this.attachShadow({ mode: 'open' });
     this.progress = 0;
-    this.color = '#4CAF50';
+    this.color = '#C366CD';
     this.size = 90;
     this.strokeWidth = 6;
   }
@@ -123,10 +123,10 @@ class TimeFlowCard extends HTMLElement {
       show_hours: true,
       show_minutes: true,
       show_seconds: true,
-      color: '#ffffff',
-      background_color: '#1976d2',
-      progress_color: '#4CAF50',
-      expired_animation: true, // Enable celebration animation when countdown expires
+      color: '#FCFCFC',
+      background_color: '#000001',
+      progress_color: '#C366CD',
+      expired_animation: true, 
       // Dynamic sizing options (like button-card)
       width: null, // e.g., '200px' or '100%'
       height: null, // e.g., '150px' or 'auto'
