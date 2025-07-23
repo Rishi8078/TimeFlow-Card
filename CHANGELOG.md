@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Direct ISO strings: `2025-07-22T14:30:00+00:00` → Timezone preserved for explicit control
 - Default `expired_animation: true` for celebration animation (can be disabled with `false`)
 
+> **Note:** This release was updated to include additional timezone handling improvements.
+
 ## [2.0.1] - Previous Release
 
 ### 🚀 Features
