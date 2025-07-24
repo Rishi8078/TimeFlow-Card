@@ -103,3 +103,6 @@ Thumbs.db
 # Test files (keep local for development/testing)
 test-*.html
 *.test.html
+
+# test suite
+test-suite/
