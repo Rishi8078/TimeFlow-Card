@@ -5,6 +5,35 @@ All notable changes to TimeFlow Card will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.3] - 2025-08-15
+
+This is a landmark update for the TimeFlow Card, focusing on a complete architectural overhaul for significantly improved performance, stability, and future extensibility.
+
+### Performance & Efficiency
+
+- **Optimized Rendering**: Intelligent element-specific updates instead of full DOM recreation
+- **Animation Frame Sync**: Visual updates synchronized with browser rendering cycle
+- **Smart Caching**: Cached templates, styles, and configs for faster rendering
+
+### ⚡ Architecture
+- **Complete Rewrite**: Modern, modular codebase structure
+- **Service-Based Design**: 
+    - CountdownService for time calculations
+    - TemplateService for HA template handling
+    - StyleManager for dynamic styling
+    - AccessibilityManager for ARIA support
+    - ConfigValidator for robust validation
+
+### 🔧 Fixed
+- **Flickering Eliminated**: Resolved FOUC and card-mod flickering issues
+- **Style Consistency**: Removed redundant style applications
+- **Accessibility**: Improved ARIA attributes and keyboard navigation
+
+### 📈 Improvements
+- **Performance**: Massive speed and efficiency gains
+- **Stability**: Enhanced error prevention
+- **Maintainability**: Cleaner, modular code structure
+- **Future-Ready**: Improved extensibility for future features
 ## [2.0.2] - 2025-07-23
 
 ### 🆕 Added
