@@ -5,8 +5,14 @@
   "main": "timeflow-card.js",
   "scripts": {
     "lint": "eslint *.js",
-    "build": "echo 'No build step required for this card'",
-    "release": "npm version patch && git push && git push --tags"
+    "build": "node build.js",
+    "build:watch": "node build.js --watch",
+    "build:legacy": "echo 'No build step required for legacy card'",
+    "test": "node test-suite/test-modular.js && node test-suite/test-integration.js",
+    "test:structure": "node test-suite/test-modular.js",
+    "test:integration": "node test-suite/test-integration.js",
+    "test:visual": "echo 'Open test-suite/test-modular-build.html in browser for visual tests'",
+    "release": "npm run build && npm run test && npm version patch && git push && git push --tags"
   },
   "repository": {
     "type": "git",
@@ -23,10 +29,7 @@
     "timeflow",
     "modern",
     "dashboard",
-    "card",
-    "template",
-    "jinja2",
-    "dynamic"
+    "card"
   ],
   "author": "Rishi8078",
   "license": "MIT",
