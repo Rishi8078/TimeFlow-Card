@@ -7,7 +7,6 @@ import { ConfigValidator } from '../utils/ConfigValidator.js';
 import { TemplateService } from '../services/TemplateService.js';
 import { CountdownService } from '../services/CountdownService.js';
 import { StyleManager } from '../utils/StyleManager.js';
-import { AccessibilityManager } from '../utils/AccessibilityManager.js';
 import { ProgressCircle } from '../components/ProgressCircle.js';
 
 export class TimeFlowCard extends HTMLElement {
@@ -24,7 +23,6 @@ export class TimeFlowCard extends HTMLElement {
     this.templateService = new TemplateService();
     this.countdownService = new CountdownService(this.templateService, DateParser);
     this.styleManager = new StyleManager();
-    this.accessibilityManager = new AccessibilityManager();
     
     // Performance cache
     this._cache = {
@@ -87,7 +85,6 @@ export class TimeFlowCard extends HTMLElement {
   connectedCallback() {
     (async () => await this._startTimer())();
     this._applyCardMod();
-    this._setupAccessibility();
   }
 
   disconnectedCallback() {
@@ -96,29 +93,9 @@ export class TimeFlowCard extends HTMLElement {
   }
 
   /**
-   * Sets up accessibility features
-   */
-  _setupAccessibility() {
-    this.accessibilityManager.setContext(
-      this._config,
-      this.countdownService,
-      () => this._refreshCard()
-    );
-  }
-
-  /**
-   * Refreshes the card (called by accessibility manager)
-   */
-  _refreshCard() {
-    this.templateService.clearTemplateCache();
-    this.render();
-  }
-
-  /**
    * Cleans up resources
    */
   _cleanup() {
-    this.accessibilityManager.cleanup();
     
     // Clear all caches to prevent memory leaks
     this.templateService.clearTemplateCache();
@@ -296,10 +273,11 @@ export class TimeFlowCard extends HTMLElement {
       return;
     }
 
-    // Check if we need to rebuild DOM or just update content
+    // Only build the DOM structure once (on first render or config change)
     if (!this._domElements || this._hasConfigChanged()) {
       await this._initializeDOM();
     } else {
+      // Only update content/attributes, never replace innerHTML
       await this._updateContent();
     }
   }
@@ -340,6 +318,8 @@ export class TimeFlowCard extends HTMLElement {
 
   /**
    * Performance optimization: Initialize DOM structure only when needed
+   * This method should only be called on first render or config change.
+   * After that, only _updateContent should be used to update the card.
    */
   async _initializeDOM() {
     // Generate the card's HTML structure and styles
@@ -352,20 +332,11 @@ export class TimeFlowCard extends HTMLElement {
       cardContent: this.shadowRoot.querySelector('.card-content'),
       title: this.shadowRoot.querySelector('.title'),
       subtitle: this.shadowRoot.querySelector('.subtitle'),
-      progressCircle: this.shadowRoot.querySelector('progress-circle'),
-      liveRegion: this.shadowRoot.querySelector(`#${this.accessibilityManager.getAccessibilityIds().liveRegionId}`),
-      progressDescription: this.shadowRoot.querySelector(`#${this.accessibilityManager.getAccessibilityIds().progressId}`)
+      progressCircle: this.shadowRoot.querySelector('progress-circle')
     };
-    
     // Initial content update without applying native styles again
     await this._updateContent(true);
     this._applyCardMod();
-    this._setupKeyboardNavigation();
-    this.accessibilityManager.setContext(
-      this._config,
-      this.countdownService,
-      () => this._refreshCard()
-    );
   }
 
   /**
@@ -383,40 +354,35 @@ export class TimeFlowCard extends HTMLElement {
 
     const currentProgress = await this.countdownService.calculateProgress(this._config, this._hass);
     const subtitleText = this.countdownService.getSubtitle(this._config);
-    const ids = this.accessibilityManager.generateAccessibilityIds();
     const styleTag = this._buildStyleTag(resolvedConfig);
+
+    // Generate simple IDs for elements
+    const cardId = `timeflow-card-${Math.random().toString(36).substr(2, 9)}`;
+    const titleId = `title-${Math.random().toString(36).substr(2, 9)}`;
+    const subtitleId = `subtitle-${Math.random().toString(36).substr(2, 9)}`;
 
     return `
       ${styleTag}
       <ha-card 
         class="timeflow-card ${this.countdownService.isExpired() && expired_animation ? 'expired' : ''}"
-        id="${ids.cardId}"
-        role="timer"
-        aria-labelledby="${ids.titleId}"
-        aria-describedby="${ids.subtitleId} ${ids.progressId}"
-        tabindex="0"
+        id="${cardId}"
       >
         <div class="card-content" style="${processedStyles.card || ''}">
-          ${this.accessibilityManager.generateAccessibilityHTML(ids, this.countdownService.isExpired(), subtitleText, currentProgress)}
-          
           <header class="header">
             <div class="title-section">
-              <h2 class="title" id="${ids.titleId}" style="${processedStyles.title || ''}">${this.templateService.escapeHtml(title)}</h2>
-              <p class="subtitle" id="${ids.subtitleId}" aria-live="polite" style="${processedStyles.subtitle || ''}">${this.templateService.escapeHtml(subtitleText)}</p>
+              <h2 class="title" id="${titleId}" style="${processedStyles.title || ''}">${this.templateService.escapeHtml(title)}</h2>
+              <p class="subtitle" id="${subtitleId}" style="${processedStyles.subtitle || ''}">${this.templateService.escapeHtml(subtitleText)}</p>
             </div>
           </header>
           
           <div class="content">
-            <div class="progress-section" role="region" aria-labelledby="${ids.progressId}">
+            <div class="progress-section">
               <progress-circle
                 class="progress-circle"
                 progress="${currentProgress}"
                 color="${resolvedConfig.progress_color || '#4CAF50'}"
                 size="${this.styleManager.calculateDynamicIconSize(resolvedConfig.width, resolvedConfig.height, resolvedConfig.aspect_ratio, resolvedConfig.icon_size)}"
                 stroke-width="${this.styleManager.calculateDynamicStrokeWidth(this.styleManager.calculateDynamicIconSize(resolvedConfig.width, resolvedConfig.height, resolvedConfig.aspect_ratio, resolvedConfig.icon_size), resolvedConfig.stroke_width)}"
-                role="img"
-                aria-label="Timer progress indicator"
-                aria-describedby="${ids.progressId}"
                 style="${processedStyles.progress_circle || ''}"
               ></progress-circle>
             </div>
@@ -552,33 +518,14 @@ export class TimeFlowCard extends HTMLElement {
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
           }
         }
-        
-        /* Accessibility enhancements */
-        .sr-only {
-          position: absolute;
-          width: 1px;
-          height: 1px;
-          padding: 0;
-          margin: -1px;
-          overflow: hidden;
-          clip: rect(0, 0, 0, 0);
-          white-space: nowrap;
-          border: 0;
-        }
-        
-        .live-region {
-          position: absolute;
-          left: -10000px;
-          width: 1px;
-          height: 1px;
-          overflow: hidden;
-        }
       </style>
     `;
   }
 
   /**
    * Performance optimization: Update only content that changes
+   * This method should never replace innerHTML or rebuild the DOM.
+   * It only updates the content/attributes of cached DOM elements.
    * @param {boolean} isInitializing - Whether this is the first render
    */
   async _updateContent(isInitializing = false) {
@@ -588,7 +535,7 @@ export class TimeFlowCard extends HTMLElement {
     const resolvedConfig = await this._resolveTemplateProperties();
     const { title = 'Countdown Timer' } = resolvedConfig;
 
-    // Update title - always show original title
+    // Update title
     if (this._domElements.title && this._domElements.title.textContent !== title) {
       this._domElements.title.textContent = title;
     }
@@ -612,25 +559,7 @@ export class TimeFlowCard extends HTMLElement {
     }
   }
 
-  /**
-   * Sets up keyboard navigation
-   */
-  _setupKeyboardNavigation() {
-    this.accessibilityManager.setupCardKeyboardNavigation(this.shadowRoot, this._domElements);
-  }
 
-  /**
-   * Enhanced progress updates for accessibility
-   */
-  async _updateDisplayWithAccessibility() {
-    await this._updateContent();
-    
-    // Update accessibility attributes
-    const progress = await this.countdownService.calculateProgress(this._config, this._hass);
-    const subtitle = this.countdownService.getSubtitle(this._config);
-    
-    this.accessibilityManager.updateAccessibilityAttributes(progress, subtitle);
-  }
 
   getCardSize() {
     // Dynamic card size based on aspect ratio and dimensions

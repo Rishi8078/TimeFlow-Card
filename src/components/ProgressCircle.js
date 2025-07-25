@@ -1,6 +1,6 @@
 /**
- * ProgressCircle - Modular progress circle component with accessibility
- * Provides visual progress indication with keyboard navigation support
+ * ProgressCircle - Modular progress circle component
+ * Provides visual progress indication
  */
 export class ProgressCircle extends HTMLElement {
   constructor() {
@@ -10,8 +10,6 @@ export class ProgressCircle extends HTMLElement {
     this._color = '#4CAF50';
     this._size = 100;
     this._strokeWidth = 15;
-    this._lastAnnouncedProgress = -1;
-    this._accessibilityManager = null;
   }
 
   static get observedAttributes() {
@@ -29,11 +27,9 @@ export class ProgressCircle extends HTMLElement {
             this._color = newValue || '#4CAF50';
             break;
           case 'size':
-            console.log(`ProgressCircle: Setting size to ${newValue}, parsed: ${parseInt(newValue)}`);
             this._size = parseInt(newValue) || 100;
             break;
           case 'stroke-width':
-            console.log(`ProgressCircle: Setting stroke-width to ${newValue}, parsed: ${parseInt(newValue)}`);
             this._strokeWidth = parseInt(newValue) || 15;
             break;
         }
@@ -42,141 +38,14 @@ export class ProgressCircle extends HTMLElement {
     }
   }
 
-  /**
-   * Sets up accessibility features
-   */
-  setupAccessibility() {
-    const circle = this.shadowRoot.querySelector('.progress-circle');
-    if (circle) {
-      circle.setAttribute('tabindex', '0');
-      circle.setAttribute('role', 'progressbar');
-      circle.setAttribute('aria-valuenow', Math.round(this._progress));
-      circle.setAttribute('aria-valuemin', '0');
-      circle.setAttribute('aria-valuemax', '100');
-      circle.setAttribute('aria-label', `Progress: ${Math.round(this._progress)}%`);
-      
-      // Add keyboard event listeners
-      circle.addEventListener('keydown', this._handleKeydown.bind(this));
-      circle.addEventListener('focus', this._handleFocus.bind(this));
-      circle.addEventListener('blur', this._handleBlur.bind(this));
-    }
-  }
-
-  /**
-   * Handles keyboard navigation
-   * @param {KeyboardEvent} event - Keyboard event
-   */
-  _handleKeydown(event) {
-    switch (event.key) {
-      case 'Enter':
-      case ' ':
-        event.preventDefault();
-        this._announceProgress();
-        break;
-      case 'ArrowUp':
-      case 'ArrowRight':
-        event.preventDefault();
-        this._simulateProgressChange(5);
-        break;
-      case 'ArrowDown':
-      case 'ArrowLeft':
-        event.preventDefault();
-        this._simulateProgressChange(-5);
-        break;
-    }
-  }
-
-  /**
-   * Handles focus events
-   * @param {FocusEvent} event - Focus event
-   */
-  _handleFocus(event) {
-    const circle = this.shadowRoot.querySelector('.progress-circle');
-    if (circle) {
-      circle.style.outline = '2px solid var(--primary-color, #03A9F4)';
-      circle.style.outlineOffset = '2px';
-    }
-    
-    // Announce progress when focused
-    setTimeout(() => this._announceProgress(), 100);
-  }
-
-  /**
-   * Handles blur events
-   * @param {FocusEvent} event - Blur event
-   */
-  _handleBlur(event) {
-    const circle = this.shadowRoot.querySelector('.progress-circle');
-    if (circle) {
-      circle.style.outline = 'none';
-    }
-  }
-
-  /**
-   * Announces current progress
-   */
-  _announceProgress() {
-    const progress = Math.round(this._progress);
-    if (progress !== this._lastAnnouncedProgress) {
-      this._createLiveRegionAnnouncement(`Progress: ${progress}%`);
-      this._lastAnnouncedProgress = progress;
-    }
-  }
-
-  /**
-   * Simulates progress change for demonstration (read-only in practice)
-   * @param {number} delta - Change in progress
-   */
-  _simulateProgressChange(delta) {
-    // In practice, this would be read-only, but for accessibility demo
-    const newProgress = Math.max(0, Math.min(100, this._progress + delta));
-    this.setAttribute('progress', newProgress);
-    this._announceProgress();
-  }
-
-  /**
-   * Creates live region announcement
-   * @param {string} message - Message to announce
-   */
-  _createLiveRegionAnnouncement(message) {
-    // Remove any existing announcements
-    const existingAnnouncement = this.shadowRoot.querySelector('.live-announcement');
-    if (existingAnnouncement) {
-      existingAnnouncement.remove();
-    }
-
-    // Create new announcement
-    const announcement = document.createElement('div');
-    announcement.className = 'live-announcement';
-    announcement.setAttribute('aria-live', 'assertive');
-    announcement.style.position = 'absolute';
-    announcement.style.left = '-10000px';
-    announcement.style.width = '1px';
-    announcement.style.height = '1px';
-    announcement.style.overflow = 'hidden';
-    announcement.textContent = message;
-
-    this.shadowRoot.appendChild(announcement);
-
-    // Remove announcement after it's been read
-    setTimeout(() => {
-      if (announcement.parentNode) {
-        announcement.remove();
-      }
-    }, 1000);
-  }
-
   connectedCallback() {
     this.render();
-    setTimeout(() => this.setupAccessibility(), 0);
   }
 
   render() {
     const radius = (this._size - this._strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
     const strokeDashoffset = circumference - (this._progress / 100) * circumference;
-
-    console.log(`ProgressCircle render: size=${this._size}, strokeWidth=${this._strokeWidth}, radius=${radius}, progress=${this._progress}`);
 
     // Validate calculations to prevent SVG errors
     if (isNaN(this._size) || isNaN(radius) || isNaN(circumference) || isNaN(strokeDashoffset)) {
@@ -253,12 +122,6 @@ export class ProgressCircle extends HTMLElement {
         class="progress-circle" 
         width="${this._size}" 
         height="${this._size}"
-        tabindex="0"
-        role="progressbar"
-        aria-valuenow="${Math.round(this._progress)}"
-        aria-valuemin="0"
-        aria-valuemax="100"
-        aria-label="Timer progress: ${Math.round(this._progress)}% complete"
       >
         <circle
           class="progress-background"
@@ -284,7 +147,7 @@ export class ProgressCircle extends HTMLElement {
   }
 
   /**
-   * Updates only the circle stroke offset and accessibility attributes without full re-render
+   * Updates only the circle stroke offset without full re-render
    */
   _updateCircle() {
    const radius = (this._size - this._strokeWidth) / 2;
@@ -301,11 +164,6 @@ export class ProgressCircle extends HTMLElement {
    if (progressBar) {
      progressBar.style.transition = 'stroke-dashoffset 0.3s ease';
      progressBar.style.strokeDashoffset = offset;
-   }
-   const circleEl = this.shadowRoot.querySelector('.progress-circle');
-   if (circleEl) {
-     circleEl.setAttribute('aria-valuenow', Math.round(this._progress));
-     circleEl.setAttribute('aria-label', `Progress: ${Math.round(this._progress)}%`);
    }
    
    // Update progress text
