@@ -29,9 +29,11 @@ export class ProgressCircle extends HTMLElement {
             this._color = newValue || '#4CAF50';
             break;
           case 'size':
+            console.log(`ProgressCircle: Setting size to ${newValue}, parsed: ${parseInt(newValue)}`);
             this._size = parseInt(newValue) || 100;
             break;
           case 'stroke-width':
+            console.log(`ProgressCircle: Setting stroke-width to ${newValue}, parsed: ${parseInt(newValue)}`);
             this._strokeWidth = parseInt(newValue) || 15;
             break;
         }
@@ -173,6 +175,8 @@ export class ProgressCircle extends HTMLElement {
     const radius = (this._size - this._strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
     const strokeDashoffset = circumference - (this._progress / 100) * circumference;
+
+    console.log(`ProgressCircle render: size=${this._size}, strokeWidth=${this._strokeWidth}, radius=${radius}, progress=${this._progress}`);
 
     // Validate calculations to prevent SVG errors
     if (isNaN(this._size) || isNaN(radius) || isNaN(circumference) || isNaN(strokeDashoffset)) {
