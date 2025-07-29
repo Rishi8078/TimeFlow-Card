@@ -1,16 +1,18 @@
 {
   "name": "timeflow-card",
-  "version": "2.0.3",
+  "version": "3.0.0",
+  "type": "module",
   "description": "A beautiful countdown timer card with progress circle and full Home Assistant template support",
   "main": "timeflow-card.js",
   "scripts": {
     "lint": "eslint *.js",
-    "build": "node build.js",
-    "build:watch": "node build.js --watch",
-    "build:legacy": "echo 'No build step required for legacy card'",
-    "test": "node test-suite/test-modular.js && node test-suite/test-integration.js",
-    "test:structure": "node test-suite/test-modular.js",
-    "test:integration": "node test-suite/test-integration.js",
+    "build": "rollup -c",
+    "build:legacy": "node build.js",
+    "build:watch": "rollup -c --watch",
+    "build:dev": "rollup -c --environment NODE_ENV:development",
+    "test": "node test-suite/test-modular.cjs && node test-suite/test-integration.cjs",
+    "test:structure": "node test-suite/test-modular.cjs",
+    "test:integration": "node test-suite/test-integration.cjs",
     "test:visual": "echo 'Open test-suite/test-modular-build.html in browser for visual tests'",
     "release": "npm run build && npm run test && npm version patch && git push && git push --tags"
   },
@@ -38,6 +40,19 @@
   },
   "homepage": "https://github.com/Rishi8078/TimeFlow-Card#readme",
   "devDependencies": {
-    "eslint": "^8.0.0"
+    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^12.1.4",
+    "@types/node": "^24.1.0",
+    "eslint": "^8.0.0",
+    "rollup": "^4.45.1",
+    "rollup-plugin-serve": "^3.0.0",
+    "tslib": "^2.8.1",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "lit": "^3.3.1"
   }
 }

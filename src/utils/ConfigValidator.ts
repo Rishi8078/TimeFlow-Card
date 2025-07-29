@@ -8,7 +8,7 @@ export class ConfigValidator {
    * @param {Object} config - Configuration object to validate
    * @throws {Error} - If validation fails
    */
-  static validateConfig(config) {
+  static validateConfig(config: any): void {
     const errors = [];
     
     // Validate target_date
@@ -50,7 +50,7 @@ export class ConfigValidator {
     }
     
     // Validate boolean fields
-    const booleanFields = ['show_months', 'show_days', 'show_hours', 'show_minutes', 'show_seconds', 'expired_animation'];
+    const booleanFields = ['show_months', 'show_days', 'show_hours', 'show_minutes', 'show_seconds', 'expired_animation', 'show_progress_text'];
     booleanFields.forEach(field => {
       if (config[field] !== undefined && !this.isValidBooleanInput(config[field])) {
         errors.push(`Invalid ${field}. Must be true or false.`);
@@ -81,7 +81,7 @@ export class ConfigValidator {
    * @param {*} value - Value to validate
    * @returns {boolean} - Whether the value is valid
    */
-  static isValidDateInput(value) {
+  static isValidDateInput(value: any): boolean {
     if (!value) return false;
     
     // Allow templates
@@ -108,7 +108,7 @@ export class ConfigValidator {
    * @param {*} value - Value to validate
    * @returns {boolean} - Whether the value is valid
    */
-  static isValidColorInput(value) {
+  static isValidColorInput(value: any): boolean {
     if (!value) return false;
     
     // Allow templates and entities
@@ -140,7 +140,7 @@ export class ConfigValidator {
    * @param {*} value - Value to validate
    * @returns {boolean} - Whether the value is valid
    */
-  static isValidDimensionInput(value) {
+  static isValidDimensionInput(value: any): boolean {
     if (!value) return false;
     
     // Allow templates and entities
@@ -186,7 +186,7 @@ export class ConfigValidator {
    * @param {*} value - Value to validate
    * @returns {boolean} - Whether the value is valid
    */
-  static isValidAspectRatioInput(value) {
+  static isValidAspectRatioInput(value: any): boolean {
     if (!value) return false;
     
     // Allow templates and entities
@@ -212,7 +212,7 @@ export class ConfigValidator {
    * @param {number} max - Maximum allowed value
    * @returns {boolean} - Whether the value is valid
    */
-  static isValidNumberInput(value, min = -Infinity, max = Infinity) {
+  static isValidNumberInput(value: any, min: number = -Infinity, max: number = Infinity): boolean {
     if (value === undefined || value === null) return false;
     
     // Allow templates and entities
@@ -231,7 +231,7 @@ export class ConfigValidator {
    * @param {*} value - Value to validate
    * @returns {boolean} - Whether the value is valid
    */
-  static isValidBooleanInput(value) {
+  static isValidBooleanInput(value: any): boolean {
     return typeof value === 'boolean';
   }
   
@@ -240,7 +240,7 @@ export class ConfigValidator {
    * @param {*} value - Value to validate
    * @returns {boolean} - Whether the value is valid
    */
-  static isValidTextInput(value) {
+  static isValidTextInput(value: any): boolean {
     if (!value) return true;
     
     // Allow templates and entities
@@ -268,7 +268,7 @@ export class ConfigValidator {
    * @param {*} styles - Styles object to validate
    * @returns {boolean} - Whether the styles are valid
    */
-  static isValidStylesInput(styles) {
+  static isValidStylesInput(styles: any): boolean {
     if (!styles || typeof styles !== 'object') return false;
     
     const validStyleKeys = ['card', 'title', 'subtitle', 'progress_circle'];
@@ -286,7 +286,7 @@ export class ConfigValidator {
    * @param {*} value - Value to check
    * @returns {boolean} - Whether the value is a template
    */
-  static isTemplate(value) {
+  static isTemplate(value: any): boolean {
     return typeof value === 'string' && 
            value.includes('{{') && 
            value.includes('}}');

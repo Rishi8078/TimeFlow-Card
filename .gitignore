@@ -103,6 +103,27 @@ Thumbs.db
 # Test files (keep local for development/testing)
 test-*.html
 *.test.html
+*.demo.html
+demo-*.html
+# Template testing files and debug guides
+*template*test*.yaml
+*fallback*test*.yaml
+*TEMPLATE_TESTING_GUIDE.md
+*FALLBACK_DEBUG_GUIDE.md
+minimal-fallback-test.yaml
 
-# test suite
+# Test suite and testing artifacts
 test-suite/
+*.test.js
+*.spec.js
+test-results/
+test-coverage/
+jest-results/
+cypress/
+playwright-results/
+playwright-report/
+test-artifacts/
+__tests__/
+.jest-cache/
+junit.xml
+coverage.xml

@@ -1,9 +1,19 @@
+import { TemplateService } from './TemplateService';
+import { HomeAssistant, CountdownState, CardConfig } from '../types/index';
+import { TimerEntityService } from './Timer';
+
 /**
- * CountdownService - Handles countdown calculations and time unit management
+ * CountdownService - Enhanced with Alexa Timer support
+ * Handles countdown calculations and time unit management
  * Provides clean separation of countdown logic from presentation
  */
 export class CountdownService {
-  constructor(templateService, dateParser) {
+  private templateService: any;
+  private dateParser: any;
+  private timeRemaining: CountdownState;
+  private expired: boolean;
+
+  constructor(templateService: any, dateParser: any) {
     this.templateService = templateService;
     this.dateParser = dateParser;
     this.timeRemaining = { months: 0, days: 0, hours: 0, minutes: 0, seconds: 0, total: 0 };
@@ -11,17 +21,49 @@ export class CountdownService {
   }
 
   /**
-   * Updates the countdown based on current configuration
+   * Updates the countdown based on current configuration (enhanced for Alexa)
    * @param {Object} config - Card configuration
    * @param {Object} hass - Home Assistant object
    * @returns {Promise<Object>} - Time remaining object
    */
-  async updateCountdown(config, hass) {
+  async updateCountdown(config: CardConfig, hass: HomeAssistant | null): Promise<CountdownState> {
     try {
+      // TIMER ENTITY SUPPORT (including Alexa timers)
+      if (config.timer_entity && hass) {
+        const timerData = TimerEntityService.getTimerData(config.timer_entity, hass);
+        if (timerData) {
+          // Convert TimerData to CountdownState
+          this.timeRemaining = this._timerDataToCountdownState(timerData);
+          this.expired = TimerEntityService.isTimerExpired(timerData);
+          return this.timeRemaining;
+        }
+      }
+      
+      // AUTO-DISCOVERY: If no timer_entity specified, try to find Alexa timers
+      if (!config.timer_entity && config.auto_discover_alexa && hass) {
+        const alexaTimers = TimerEntityService.discoverAlexaTimers(hass);
+        if (alexaTimers.length > 0) {
+          // Use the first active Alexa timer found
+          const firstActiveTimer = alexaTimers.find(entityId => {
+            const timerData = TimerEntityService.getTimerData(entityId, hass);
+            return timerData && timerData.isActive;
+          });
+          
+          if (firstActiveTimer) {
+            const timerData = TimerEntityService.getTimerData(firstActiveTimer, hass);
+            if (timerData) {
+              this.timeRemaining = this._timerDataToCountdownState(timerData);
+              this.expired = TimerEntityService.isTimerExpired(timerData);
+              return this.timeRemaining;
+            }
+          }
+        }
+      }
+      
       if (!config.target_date) return this.timeRemaining;
       
       const now = new Date().getTime();
-      const targetDateValue = await this.templateService.resolveValue(config.target_date, hass);
+      const targetDateValue = await this.templateService.resolveValue(config.target_date);
       
       if (!targetDateValue) {
         console.warn('TimeFlow Card: Target date could not be resolved. Check your entity or date format.');
@@ -122,13 +164,36 @@ export class CountdownService {
   }
 
   /**
-   * Calculates progress percentage
+   * Calculates progress percentage (enhanced for Alexa)
    * @param {Object} config - Card configuration
    * @param {Object} hass - Home Assistant object
    * @returns {Promise<number>} - Progress percentage (0-100)
    */
-  async calculateProgress(config, hass) {
-    const targetDateValue = await this.templateService.resolveValue(config.target_date, hass);
+  async calculateProgress(config: CardConfig, hass: HomeAssistant | null): Promise<number> {
+    // TIMER ENTITY SUPPORT (including Alexa timers)
+    if (config.timer_entity && hass) {
+      const timerData = TimerEntityService.getTimerData(config.timer_entity, hass);
+      if (!timerData) return 0;
+      return timerData.progress;
+    }
+    
+    // AUTO-DISCOVERY: Try Alexa timers if enabled
+    if (!config.timer_entity && config.auto_discover_alexa && hass) {
+      const alexaTimers = TimerEntityService.discoverAlexaTimers(hass);
+      if (alexaTimers.length > 0) {
+        const firstActiveTimer = alexaTimers.find(entityId => {
+          const timerData = TimerEntityService.getTimerData(entityId, hass);
+          return timerData && timerData.isActive;
+        });
+        
+        if (firstActiveTimer) {
+          const timerData = TimerEntityService.getTimerData(firstActiveTimer, hass);
+          if (timerData) return timerData.progress;
+        }
+      }
+    }
+    
+    const targetDateValue = await this.templateService.resolveValue(config.target_date);
     if (!targetDateValue) return 0;
     
     // Use the helper method for consistent date parsing
@@ -137,7 +202,7 @@ export class CountdownService {
     
     let creationDate;
     if (config.creation_date) {
-      const creationDateValue = await this.templateService.resolveValue(config.creation_date, hass);
+      const creationDateValue = await this.templateService.resolveValue(config.creation_date);
       
       if (creationDateValue) {
         // Use the helper method for consistent date parsing
@@ -159,11 +224,59 @@ export class CountdownService {
   }
 
   /**
-   * Gets the main display value and label
+   * Gets the main display value and label (enhanced for Alexa)
    * @param {Object} config - Card configuration
+   * @param {Object} hass - Home Assistant object (NEW parameter)
    * @returns {Object} - Object with value and label properties
    */
-  getMainDisplay(config) {
+  getMainDisplay(config: CardConfig, hass?: HomeAssistant | null): { value: string; label: string } {
+    // TIMER ENTITY SUPPORT (including Alexa timers)
+    if (config.timer_entity && hass) {
+      const timerData = TimerEntityService.getTimerData(config.timer_entity, hass);
+      if (timerData) {
+        const { hours, minutes, seconds } = this.timeRemaining;
+        
+        // Special handling for Alexa timers
+        if (timerData.isAlexaTimer) {
+          if (TimerEntityService.isTimerExpired(timerData)) {
+            return { value: '🔔', label: 'Timer finished!' };
+          }
+          if (hours > 0) return { value: hours.toString(), label: hours === 1 ? 'hour left' : 'hours left' };
+          if (minutes > 0) return { value: minutes.toString(), label: minutes === 1 ? 'minute left' : 'minutes left' };
+          return { value: seconds.toString(), label: seconds === 1 ? 'second left' : 'seconds left' };
+        }
+        
+        // Standard timer handling
+        if (hours > 0) return { value: hours.toString(), label: hours === 1 ? 'hour' : 'hours' };
+        if (minutes > 0) return { value: minutes.toString(), label: minutes === 1 ? 'minute' : 'minutes' };
+        return { value: seconds.toString(), label: seconds === 1 ? 'second' : 'seconds' };
+      }
+    }
+    
+    // AUTO-DISCOVERY: Try Alexa timers if enabled
+    if (!config.timer_entity && config.auto_discover_alexa && hass) {
+      const alexaTimers = TimerEntityService.discoverAlexaTimers(hass);
+      if (alexaTimers.length > 0) {
+        const firstActiveTimer = alexaTimers.find(entityId => {
+          const timerData = TimerEntityService.getTimerData(entityId, hass);
+          return timerData && timerData.isActive;
+        });
+        
+        if (firstActiveTimer) {
+          const timerData = TimerEntityService.getTimerData(firstActiveTimer, hass);
+          if (timerData) {
+            const { hours, minutes, seconds } = this.timeRemaining;
+            if (TimerEntityService.isTimerExpired(timerData)) {
+              return { value: '🔔', label: 'Alexa timer finished!' };
+            }
+            if (hours > 0) return { value: hours.toString(), label: hours === 1 ? 'hour left' : 'hours left' };
+            if (minutes > 0) return { value: minutes.toString(), label: minutes === 1 ? 'minute left' : 'minutes left' };
+            return { value: seconds.toString(), label: seconds === 1 ? 'second left' : 'seconds left' };
+          }
+        }
+      }
+    }
+    
     const { show_months, show_days, show_hours, show_minutes, show_seconds } = config;
     const { months, days, hours, minutes, seconds } = this.timeRemaining;
     
@@ -188,11 +301,42 @@ export class CountdownService {
   }
 
   /**
-   * Gets the subtitle text showing time breakdown
+   * Gets the subtitle text showing time breakdown (enhanced for Alexa)
    * @param {Object} config - Card configuration
+   * @param {Object} hass - Home Assistant object
    * @returns {string} - Formatted subtitle text
    */
-  getSubtitle(config) {
+  getSubtitle(config: CardConfig, hass: HomeAssistant | null): string {
+    // TIMER ENTITY SUPPORT (including Alexa timers)
+    if (config.timer_entity && hass) {
+      const timerData = TimerEntityService.getTimerData(config.timer_entity, hass);
+      if (timerData) {
+        return TimerEntityService.getTimerSubtitle(timerData, config.show_seconds !== false);
+      }
+      return 'Timer not found';
+    }
+    
+    // AUTO-DISCOVERY: Try Alexa timers if enabled
+    if (!config.timer_entity && config.auto_discover_alexa && hass) {
+      const alexaTimers = TimerEntityService.discoverAlexaTimers(hass);
+      if (alexaTimers.length > 0) {
+        const firstActiveTimer = alexaTimers.find(entityId => {
+          const timerData = TimerEntityService.getTimerData(entityId, hass);
+          return timerData && timerData.isActive;
+        });
+        
+        if (firstActiveTimer) {
+          const timerData = TimerEntityService.getTimerData(firstActiveTimer, hass);
+          if (timerData) {
+            return TimerEntityService.getTimerSubtitle(timerData, config.show_seconds !== false);
+          }
+        } else if (alexaTimers.length > 0) {
+          // Show info about available but inactive timers
+          return `${alexaTimers.length} Alexa timer${alexaTimers.length === 1 ? '' : 's'} available`;
+        }
+      }
+    }
+    
     if (this.expired) {
       const { expired_text = 'Completed! 🎉' } = config;
       return expired_text;
@@ -260,10 +404,24 @@ export class CountdownService {
   }
 
   /**
+   * Converts TimerData to CountdownState for unified interface
+   */
+  private _timerDataToCountdownState(timerData: any): CountdownState {
+    return {
+      months: 0,
+      days: 0,
+      hours: Math.floor(timerData.remaining / 3600),
+      minutes: Math.floor((timerData.remaining % 3600) / 60),
+      seconds: Math.floor(timerData.remaining % 60),
+      total: timerData.remaining * 1000 // ms for consistency
+    };
+  }
+
+  /**
    * Gets current time remaining
    * @returns {Object} - Time remaining object
    */
-  getTimeRemaining() {
+  getTimeRemaining(): CountdownState {
     return this.timeRemaining;
   }
 
@@ -271,7 +429,17 @@ export class CountdownService {
    * Gets expired status
    * @returns {boolean} - Whether countdown has expired
    */
-  isExpired() {
+  isExpired(): boolean {
     return this.expired;
+  }
+
+  /**
+   * Gets available Alexa timers for debugging/info
+   * @param {Object} hass - Home Assistant object
+   * @returns {string[]} - Array of Alexa timer entity IDs
+   */
+  getAvailableAlexaTimers(hass: HomeAssistant | null): string[] {
+    if (!hass) return [];
+    return TimerEntityService.discoverAlexaTimers(hass);
   }
 }

@@ -3,5 +3,5 @@
   "render_readme": true,
   "filename": "timeflow-card.js",
   "content_in_root": false,
-  "homeassistant": "2023.7.0"
+  "homeassistant": "2023.3.0"
 }
