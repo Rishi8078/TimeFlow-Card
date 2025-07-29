@@ -4,6 +4,8 @@
 
 A beautiful and highly customizable countdown timer card for Home Assistant, featuring an animated progress circle, intelligent time formatting, and deep integration with Home Assistant entities, including timers.
 
+![TimeFlow Card Preview](assets/assets.png)
+
 Find a complete set of configuration examples in the [examples.md](https://github.com/Rishi8078/TimeFlow-Card/blob/main/examples.md) file.
 
 ## 🚀 Installation
@@ -144,11 +146,12 @@ If you find this card useful, please consider supporting its development. Your c
 
 **TimeFlow Card - Made with ❤️ for the Home Assistant community**
 
-[]: #
-[ha_link]: https://www.google.com/search?q=%5Bhttps://www.home-assistant.io/%5D\(https://www.home-assistant.io/\)
-[]: #
-[hacs_link]: https://www.google.com/search?q=%5Bhttps://hacs.xyz/%5D\(https://hacs.xyz/\)
-[]: #
-[release]: https://www.google.com/search?q=%5Bhttps://github.com/Rishi8078/TimeFlow-Card/releases%5D\(https://github.com/Rishi8078/TimeFlow-Card/releases\)
-[]: #
-[bmac]: https://www.google.com/search?q=%5Bhttps://coff.ee/rishi8078%5D\(https://coff.ee/rishi8078\)
+<!-- Link references -->
+[ha_badge]: https://img.shields.io/badge/Home%20Assistant-Compatible-green
+[ha_link]: https://www.home-assistant.io/
+[hacs_badge]: https://img.shields.io/badge/HACS-Compatible-orange
+[hacs_link]: https://hacs.xyz/
+[release_badge]: https://img.shields.io/github/v/release/Rishi8078/TimeFlow-Card
+[release]: https://github.com/Rishi8078/TimeFlow-Card/releases
+[bmac_badge]: https://img.shields.io/badge/buy_me_a-coffee-yellow
+[bmac]: https://coff.ee/rishi8078
