@@ -4,7 +4,7 @@
 
 A beautiful and highly customizable countdown timer card for Home Assistant, featuring an animated progress circle, intelligent time formatting, and deep integration with Home Assistant entities, including timers.
 
-![TimeFlow Card Preview](assets/assets/Home.png)
+![TimeFlow Card Preview](assets/Home.png)
 
 Find a complete set of configuration examples in the [examples.md](https://github.com/Rishi8078/TimeFlow-Card/blob/main/examples.md) file.
 
