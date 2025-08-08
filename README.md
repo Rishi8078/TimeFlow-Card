@@ -2,19 +2,19 @@
 
 [![Home Assistant][ha_badge]][ha_link] [![HACS][hacs_badge]][hacs_link] [![GitHub Release][release_badge]][release] [![Buy Me A Coffee][bmac_badge]][bmac]
 
-A beautiful and highly customizable countdown timer card for Home Assistant, featuring an animated progress circle, intelligent time formatting, and deep integration with Home Assistant entities, including timers.
+A beautiful, highly customizable countdown timer card for Home Assistant. Track your next trip, a loved one’s birthday, or an important deadline and always know exactly how much time is left. Now with built-in support for timers and Jinja2 templates for even more flexibility.
 
 ![TimeFlow Card Preview](assets/Home.png)
 
 Find a complete set of configuration examples in the [examples.md](https://github.com/Rishi8078/TimeFlow-Card/blob/main/examples.md) file.
 
-## 🚀 Installation
+## Installation
 
-### HACS (Recommended)
+#### HACS (Recommended)
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=rishi8078&repository=Timeflow-card)
 
-### Manual Installation
+####  Manual Installation
 
 1.  Download `timeflow-card.js` from the latest [release](https://github.com/Rishi8078/TimeFlow-Card/releases).
 2.  Copy the file to your `config/www/` directory.
@@ -51,11 +51,6 @@ This card offers a wide range of options to customize its appearance and behavio
 | `icon_size`           | `string`  | `"100px"`           | The size of the progress circle. Auto-scales by default.                                                |
 | `stroke_width`        | `number`  | `15`                | The thickness of the progress circle's stroke.                                                          |
 | `card_mod`            | `object`  | `null`              | Provides advanced styling capabilities via the [card-mod](https://github.com/thomasloven/lovelace-card-mod) integration. |
-
-Of course. Here is the updated "Styling" section for your `README.md`, focusing exclusively on `card-mod` for advanced customization.
-
------
-Of course. Here is the "Advanced Styling" section, properly structured with tables and examples for clarity.
 
 -----
 
