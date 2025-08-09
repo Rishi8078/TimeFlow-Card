@@ -658,7 +658,7 @@ Templates can be used in the following properties for dynamic content:
 
 #### Example
 
-<img src="assets/hvac.gif" alt="hvac" style="image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;">
+<img src="assets/hvac.gif" alt="hvac" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
 
 A card to track the life of your HVAC filter. It dynamically changes its progress and background colors to give you a quick visual cue as the replacement date gets closer.
 
