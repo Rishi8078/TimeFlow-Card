@@ -5,6 +5,22 @@ All notable changes to TimeFlow Card will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.1] - 2025-08-09
+
+This release focuses on adding new interactive features, improving configuration validation, and making the card more resilient to errors.
+
+### 🚀 Features
+
+-   **Action Handler**: Added support for `tap_action`, `hold_action`, and `double_tap_action` to make the card interactive.
+-   **Added Templates to Expired_text**: Added support for templates in Expired_text.
+-   **Enhanced Validation**: The configuration validation now provides detailed error messages and suggestions to help you fix issues quickly.
+-   **Error Display**: Configuration errors are now displayed gracefully within the card, preventing crashes and making debugging easier.
+
+### 🔧 Fixed
+
+-   **Improved Alexa Timer Support**: Enhanced the logic for discovering and handling Alexa timers to be more reliable.
+-   **Default Timer Action**: Timer entities now have a default `tap_action` that opens the "more-info" dialog for convenience.
+
 ## [3.0.0] - 2025-07-29
 
 This is a landmark release representing a complete architectural migration from a single JavaScript file to a modular TypeScript project. This improves performance, stability, and extensibility for the future.
