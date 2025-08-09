@@ -9,7 +9,7 @@ A beautiful, highly customizable countdown timer card for Home Assistant. Track 
 
 ## Table of contents
 
-**[`Installation`](#installation)**  **[`Configuration`](#configuration)** **[`Examples`](#examples)** **[`Styling`](#️-advanced-styling-with-card-mod)** **[`Templates`](#-template-support)** 
+**[`Installation`](#installation)**  **[`Configuration`](#configuration)** **[`Examples`](#examples)** **[`Styling`](#styling)** **[`Templates`](#-template-support)** 
 <br>
 
 ## Installation
@@ -492,6 +492,9 @@ This table includes the primary structural elements you can target with CSS sele
 > [!IMPORTANT]  
 > Please note that you might have to add `!important;` to some CSS styles that are already defined (see examples below).
 #### Examples
+
+> [!NOTE]
+> Click on the headings below to expand the code and see the examples.
 
 <details>
 
