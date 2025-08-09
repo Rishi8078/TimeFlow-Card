@@ -1,4 +1,4 @@
-// Enhanced types/index.ts with Alexa Timer support
+// Enhanced types/index.ts with Alexa Timer support and Action handling
 
 export interface HomeAssistant {
   states: { [entity_id: string]: any };
@@ -20,6 +20,34 @@ export interface CountdownState {
 export interface TimeFlowCard {
   hass: HomeAssistant | null;
   // Add other properties as needed
+}
+
+// Action configuration types
+export interface ActionConfig {
+  action: 'more-info' | 'toggle' | 'call-service' | 'navigate' | 'url' | 'none';
+  entity?: string;
+  service?: string;
+  service_data?: { [key: string]: any };
+  data?: { [key: string]: any };
+  target?: {
+    entity_id?: string | string[];
+    device_id?: string | string[];
+    area_id?: string | string[];
+  };
+  navigation_path?: string;
+  url_path?: string;
+  confirmation?: boolean | {
+    text?: string;
+    exemptions?: Array<{ user: string }>;
+  };
+  haptic?: 'success' | 'warning' | 'failure' | 'light' | 'medium' | 'heavy' | 'selection';
+}
+
+// Action handler event interface
+export interface ActionHandlerEvent extends Event {
+  detail: {
+    action: 'tap' | 'hold' | 'double_tap';
+  };
 }
 
 export interface CardConfig {
@@ -46,6 +74,11 @@ export interface CardConfig {
   show_hours?: boolean;
   show_minutes?: boolean;
   show_seconds?: boolean;
+  
+  // Action configuration
+  tap_action?: ActionConfig;
+  hold_action?: ActionConfig;
+  double_tap_action?: ActionConfig;
   
   // Styling
   color?: string;

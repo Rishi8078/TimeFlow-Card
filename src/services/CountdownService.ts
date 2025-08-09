@@ -66,7 +66,6 @@ export class CountdownService {
       const targetDateValue = await this.templateService.resolveValue(config.target_date);
       
       if (!targetDateValue) {
-        console.warn('TimeFlow Card: Target date could not be resolved. Check your entity or date format.');
         return this.timeRemaining;
       }
       
@@ -74,7 +73,6 @@ export class CountdownService {
       const targetDate = this.dateParser.parseISODate(targetDateValue);
       
       if (isNaN(targetDate)) {
-        console.warn('TimeFlow Card: Invalid target date format:', targetDateValue);
         return this.timeRemaining;
       }
       
@@ -158,7 +156,6 @@ export class CountdownService {
       
       return this.timeRemaining;
     } catch (error) {
-      console.error('TimeFlow Card: Error in updateCountdown:', error);
       return this.timeRemaining;
     }
   }
@@ -441,5 +438,33 @@ export class CountdownService {
   getAvailableAlexaTimers(hass: HomeAssistant | null): string[] {
     if (!hass) return [];
     return TimerEntityService.discoverAlexaTimers(hass);
+  }
+
+  /**
+   * Get the current timer entity being used (for default actions)
+   */
+  getCurrentTimerEntity(config: any, hass: any): string | null {
+    // If explicit timer entity is configured, use it
+    if (config.timer_entity) {
+      return config.timer_entity;
+    }
+
+    // If auto-discovery is enabled, try to find the best Alexa timer
+    if (config.auto_discover_alexa && hass) {
+      const alexaTimers = TimerEntityService.discoverAlexaTimers(hass);
+      if (alexaTimers.length > 0) {
+        // Find the first active timer, or return the first timer if none are active
+        for (const entityId of alexaTimers) {
+          const timerData = TimerEntityService.getTimerData(entityId, hass);
+          if (timerData && timerData.isActive) {
+            return entityId;
+          }
+        }
+        // No active timers found, return the first one
+        return alexaTimers[0];
+      }
+    }
+
+    return null;
   }
 }

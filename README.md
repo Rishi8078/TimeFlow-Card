@@ -6,7 +6,6 @@ A beautiful, highly customizable countdown timer card for Home Assistant. Track 
 
 [![Home Assistant][ha_badge]][ha_link] [![HACS][hacs_badge]][hacs_link] [![GitHub Release][release_badge]][release] [![Buy Me A Coffee][bmac_badge]][bmac]
 
-Find a complete set of configuration examples in the [examples.md](https://github.com/Rishi8078/TimeFlow-Card/blob/main/examples.md) file.
 
 ## Table of contents
 
@@ -669,7 +668,7 @@ A card to track the life of your HVAC filter. It dynamically changes its progres
 <summary>View YAML</summary>
 
 ```yaml
-type: custom:timeflow-card-beta
+type: custom:timeflow-card
 title: HVAC Filter Countdown
 creation_date: "{{ states('input_datetime.last_hvac_filter_change') }}"
 target_date: >-

@@ -64,7 +64,6 @@ export class TimerEntityService {
 
     const entity = hass.states[entityId];
     if (!entity) {
-      console.warn(`Timer entity ${entityId} not found`);
       return null;
     }
 

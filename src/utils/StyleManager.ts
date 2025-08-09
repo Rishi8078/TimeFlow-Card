@@ -46,7 +46,6 @@ export class StyleManager {
         }
         return '';
       } catch (e) {
-        console.warn('TimeFlow Card: Error processing style:', style, e);
         return '';
       }
     }).join('; ');
@@ -78,7 +77,6 @@ export class StyleManager {
       this.cache.lastConfigHash = configHash;
       return processedStyles;
     } catch (e) {
-      console.warn('TimeFlow Card: Error building styles object:', e);
       this.cache.customStyles = {
         card: '',
         title: '',
@@ -162,7 +160,6 @@ export class StyleManager {
       this.cache.lastIconConfigHash = configKey;
       return this.cache.dynamicIconSize;
     } catch (error) {
-      console.warn('TimeFlow Card: Error calculating dynamic icon size:', error);
       this.cache.dynamicIconSize = StyleManager.MIN_ICON_SIZE; // Safe fallback
       return this.cache.dynamicIconSize;
     }
@@ -195,7 +192,6 @@ export class StyleManager {
       this.cache.lastStrokeConfigHash = configKey;
       return this.cache.dynamicStrokeWidth;
     } catch (error) {
-      console.warn('TimeFlow Card: Error calculating dynamic stroke width:', error);
       this.cache.dynamicStrokeWidth = StyleManager.MIN_STROKE; // Safe fallback
       return this.cache.dynamicStrokeWidth;
     }
@@ -221,7 +217,6 @@ export class StyleManager {
         cardHeight
       };
     } catch (error) {
-      console.warn('TimeFlow Card: Error calculating proportional sizes:', error);
       return { titleSize: 1.6, subtitleSize: 1.1, cardWidth: 300, cardHeight: 150 };
     }
   }
@@ -251,7 +246,6 @@ export class StyleManager {
       const parsed = parseFloat(dimStr);
       return isNaN(parsed) ? null : parsed;
     } catch (error) {
-      console.warn('TimeFlow Card: Error parsing dimension:', dimension, error);
       return null;
     }
   }

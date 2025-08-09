@@ -1,25 +1,13 @@
 // ProgressCircle.ts
 import { LitElement, html, css, CSSResult, TemplateResult, PropertyValues } from 'lit';
+import { property } from 'lit/decorators.js';
 
 export class ProgressCircle extends LitElement {
-  static properties = {
-    progress: { type: Number },
-    color: { type: String },
-    size: { type: Number },
-    strokeWidth: { type: Number },
-    // FIXED: Proper boolean property definition with correct attribute mapping
-    showProgressText: { 
-      type: Boolean, 
-      attribute: 'show-progress-text',
-      reflect: true // IMPORTANT: This helps with debugging
-    }
-  };
-
-  progress: number = 0;
-  color: string = '#4CAF50';
-  size: number = 100;
-  strokeWidth: number = 15;
-  showProgressText: boolean = false;
+  @property({ type: Number }) progress: number = 0;
+  @property({ type: String }) color: string = '#4CAF50';
+  @property({ type: Number }) size: number = 100;
+  @property({ type: Number }) strokeWidth: number = 15;
+  @property({ type: Boolean }) showProgressText: boolean = false;
 
   static get styles(): CSSResult {
     return css`
@@ -58,13 +46,7 @@ export class ProgressCircle extends LitElement {
     this.showProgressText = false;
   }
 
-  // FIXED: Add debugging to see when properties change
   updated(changed: PropertyValues): void {
-    // Debug logging
-    if (changed.has('showProgressText')) {
-      console.log('ProgressCircle - showProgressText changed to:', this.showProgressText, typeof this.showProgressText);
-    }
-
     // Animate stroke-dashoffset if progress changes
     if (changed.has('progress')) {
       const circle = this.renderRoot?.querySelector('.progress-bar') as HTMLElement;
@@ -74,13 +56,6 @@ export class ProgressCircle extends LitElement {
           if (circle) circle.classList.remove('updating');
         }, 400);
       }
-    }
-  }
-
-  // FIXED: Add property change handler for better debugging
-  willUpdate(changed: PropertyValues): void {
-    if (changed.has('showProgressText')) {
-      console.log('ProgressCircle willUpdate - showProgressText:', this.showProgressText);
     }
   }
 
@@ -111,9 +86,6 @@ export class ProgressCircle extends LitElement {
 
     // Calculate responsive font size based on circle size
     const fontSize = Math.max(10, Math.min(24, size * 0.16));
-
-    // FIXED: Debug log in render to see current state
-    console.log('ProgressCircle render - showProgressText:', this.showProgressText, 'progress:', safeProgress);
 
     return html`
       <div class="progress-wrapper" style="width:${size}px; height:${size}px;">

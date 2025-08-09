@@ -80,9 +80,7 @@ export class TemplateService {
       
       return result;
     } catch (error: any) {
-      console.warn('TimeFlow Card: Template evaluation failed, using fallback:', error?.message || error);
-      
-      // Immediately return fallback instead of trying callWS
+      // Template evaluation failed, use fallback
       const fallback = this.extractFallbackFromTemplate(template);
       
       // Cache the fallback to prevent repeated failed calls
@@ -145,7 +143,6 @@ export class TemplateService {
       // If no fallback pattern found, return a helpful message
       return 'Unavailable';
     } catch (error) {
-      console.warn('TimeFlow Card: Error extracting fallback from template:', error);
       return 'Template Error';
     }
   }
@@ -203,7 +200,6 @@ export class TemplateService {
     if (typeof value === 'string' && value.includes('.') && hass && hass.states[value]) {
       const entity = hass.states[value];
       if (!entity) {
-        console.warn(`Entity ${value} not found`);
         return undefined;
       }
       return entity.state;

@@ -3,11 +3,13 @@ import { LitElement, html, css, TemplateResult, CSSResult } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { TimerEntityService } from '../services/Timer';
 import { DateParser } from '../utils/DateParser';
-import { ConfigValidator } from '../utils/ConfigValidator';
+import { ConfigValidator, ValidationResult, ValidationError } from '../utils/ConfigValidator';
 import { TemplateService } from '../services/TemplateService';
 import { CountdownService } from '../services/CountdownService';
 import { StyleManager } from '../utils/StyleManager';
 import { HomeAssistant, CountdownState, CardConfig } from '../types/index';
+import { createActionHandler, createHandleAction } from '../utils/ActionHandler';
+import '../utils/ErrorDisplay';
 
 export class TimeFlowCard extends LitElement {
   // Reactive properties to trigger updates
@@ -26,8 +28,8 @@ export class TimeFlowCard extends LitElement {
     total: 0
   };
   @state() private _expired: boolean = false;
-  @state() private _error: string | null = null;
-  @state() private _initialized: boolean = false; // NEW: Track initialization
+  @state() private _validationResult: ValidationResult | null = null;
+  @state() private _initialized: boolean = false; // Track initialization
 
   // Timer ID
   private _timerId: ReturnType<typeof setInterval> | null = null;
@@ -61,6 +63,32 @@ export class TimeFlowCard extends LitElement {
         /* REMOVED: transition that causes flash - only animate specific properties if needed */
         /* transition: background-color 0.3s ease; */
         min-height: 120px; /* Prevent layout shift */
+        user-select: none; /* Prevent text selection during interactions */
+      }
+      
+      /* Make card interactive when actions are configured */
+      ha-card[actionHandler] {
+        cursor: pointer;
+      }
+      
+      ha-card[actionHandler]:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      
+      ha-card[actionHandler]:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      
+      /* Error message styling */
+      .error {
+        color: #721c24;
+        padding: 12px;
+        border-radius: 16px;
+        white-space: pre-wrap;
+        word-break: break-word;
       }
       
       /* FIXED: Only show card after initialization to prevent white flash */
@@ -189,23 +217,61 @@ export class TimeFlowCard extends LitElement {
 
   setConfig(config: CardConfig): void {
     try {
-      ConfigValidator.validateConfig(config);
-      this.config = { ...config };
-      // FIXED: Immediately update resolved config to prevent empty state
-      this._resolvedConfig = { ...config };
-      this._error = null;
+      // Validate the config with new enhanced validation
+      const validationResult = ConfigValidator.validateConfig(config);
+      this._validationResult = validationResult;
+      
+      // Determine if we should proceed with the configuration
+      if (validationResult.hasCriticalErrors) {
+        // Use safe config if available, otherwise use stub config
+        this.config = validationResult.safeConfig || this.getStubConfig();
+        this._resolvedConfig = { ...this.config };
+      } else if (validationResult.hasWarnings) {
+        // Configuration has warnings - don't proceed with normal flow
+        this.config = { ...config };
+        this._resolvedConfig = { ...config };
+        this._initialized = true; // Set as initialized to show the warning
+        this.requestUpdate();
+        return; // Don't proceed with countdown updates
+      } else {
+        // Configuration is valid
+        this.config = { ...config };
+        this._resolvedConfig = { ...config };
+      }
+      
       this._initialized = false; // Reset initialization flag
       this.templateService.clearTemplateCache();
       this.styleManager.clearCache();
       
-      // FIXED: Trigger immediate update after config change
+      // Trigger immediate update after config change
       this._updateCountdownAndRender().then(() => {
         this._initialized = true;
         this.requestUpdate();
       });
     } catch (err) {
-      this._error = (err as Error).message || 'Invalid configuration';
-      console.error('TimeFlow Card: Configuration error:', err);
+      // Handle unexpected validation errors
+      
+      // Create a validation result for unexpected errors
+      this._validationResult = {
+        isValid: false,
+        errors: [{
+          field: 'config',
+          message: (err as Error).message || 'Unexpected configuration error',
+          severity: 'critical',
+          suggestion: 'Check console for details and verify your configuration syntax.',
+          value: config
+        }],
+        hasCriticalErrors: true,
+        hasWarnings: false,
+        safeConfig: this.getStubConfig()
+      };
+      
+      this.config = this.getStubConfig();
+      this._resolvedConfig = { ...this.config };
+      this._initialized = true; // Make sure we're initialized to render the error
+      
+      // Force update to show error message
+      this.requestUpdate();
     }
   }
 
@@ -242,7 +308,7 @@ export class TimeFlowCard extends LitElement {
   _startCountdownUpdates(): void {
     this._stopCountdownUpdates(); // clear previous interval
     this._timerId = setInterval(() => {
-      this._updateCountdownAndRender().catch(console.error);
+      this._updateCountdownAndRender();
     }, 1000);
   }
 
@@ -260,8 +326,8 @@ export class TimeFlowCard extends LitElement {
    * Resolves templates and updates countdown data, then requests re-render
    */
   async _updateCountdownAndRender() {
-    // If configuration error, skip updates
-    if (this._error) return;
+    // If we have critical configuration errors, skip updates
+    if (this._validationResult?.hasCriticalErrors) return;
 
     // Clone config for resolution
     const resolvedConfig = { ...this.config };
@@ -306,9 +372,22 @@ export class TimeFlowCard extends LitElement {
   }
 
   render(): TemplateResult {
-    if (this._error) {
-      return html`<ha-card><div class="error">Configuration Error: ${this._error}</div></ha-card>`;
+    // Handle validation errors and configuration issues
+    if (this._validationResult && !this._validationResult.isValid) {
+      // Show error display for any validation issues (critical errors or warnings)
+      return html`
+        <error-display
+          .errors="${this._validationResult.errors}"
+          .title="${this._validationResult.hasCriticalErrors ? 'Configuration Error' : 'Configuration Issues'}"
+        ></error-display>
+      `;
     }
+
+    // Render normal card only if validation passed completely
+    return this._renderCard();
+  }
+
+  private _renderCard(): TemplateResult {
 
     const {
       title ,
@@ -352,6 +431,7 @@ export class TimeFlowCard extends LitElement {
       `--timeflow-card-stroke-width: ${dynamicStroke}`,
       `--timeflow-title-size: ${proportionalSizes.titleSize}rem`,
       `--timeflow-subtitle-size: ${proportionalSizes.subtitleSize}rem`,
+      `--progress-text-color: ${textColor}`,
       ...dimensionStyles
     ].join('; ');
 
@@ -384,11 +464,31 @@ export class TimeFlowCard extends LitElement {
       (this._expired && expired_animation) ? 'expired' : ''
     ].filter(Boolean).join(' ');
 
-    // FIXED: Debug logging to see what's happening
-    console.log('TimeFlowCard render - show_progress_text:', show_progress_text, typeof show_progress_text);
+    // Create resolved config with default actions for timer entities
+    const configWithDefaults = { ...this._resolvedConfig };
+    
+    // Add default tap action for timer entities if none is configured
+    if (!configWithDefaults.tap_action) {
+      const currentTimerEntity = this.countdownService.getCurrentTimerEntity(configWithDefaults, this.hass);
+      if (currentTimerEntity) {
+        configWithDefaults.tap_action = {
+          action: 'more-info',
+          entity: currentTimerEntity
+        };
+      }
+    }
+
+    // Check if any actions are configured (including defaults)
+    const hasActions = configWithDefaults.tap_action || configWithDefaults.hold_action || configWithDefaults.double_tap_action;
 
     return html`
-      <ha-card class="${cardClasses}" style="${cardStyles}">
+      <ha-card 
+        class="${cardClasses}" 
+        style="${cardStyles}"
+        ?actionHandler=${hasActions}
+        .actionHandler=${hasActions ? createActionHandler(configWithDefaults) : undefined}
+        @action=${hasActions && this.hass ? createHandleAction(this.hass, configWithDefaults) : undefined}
+      >
         <div class="card-content">
           <header class="header">
             <div class="title-section">
@@ -405,7 +505,7 @@ export class TimeFlowCard extends LitElement {
                 .color="${mainProgressColor}"
                 .size="${dynamicCircleSize}"
                 .strokeWidth="${dynamicStroke}"
-                ?show-progress-text="${show_progress_text}"
+                .showProgressText="${show_progress_text === true}"
                 aria-label="Countdown progress: ${Math.round(this._progress)}%"
               ></progress-circle>
             </div>
@@ -441,6 +541,6 @@ export class TimeFlowCard extends LitElement {
 
   // Static version info
   static get version() {
-    return '3.0.0';
+    return '3.0.1';
   }
 }

@@ -161,11 +161,9 @@ export class DateParser {
         return timestamp;
       }
       
-      // Last resort: return current time with warning
-      console.warn('TimeFlow Card: Could not parse date, using current time as fallback:', dateString);
+      // Last resort: return current time as fallback
       return Date.now();
     } catch (error) {
-      console.error('TimeFlow Card: All date parsing methods failed:', error);
       return Date.now();
     }
   }
