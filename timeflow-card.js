@@ -211,7 +211,7 @@ function t(t,e,i,s){var r,n=arguments.length,a=n<3?e:null===s?s=Object.getOwnPro
           </div>
         </div>
       </ha-card>
-    `;var T}getCardSize(){const{aspect_ratio:t="2/1",height:e}=this.config;if(e){const t=parseInt("string"==typeof e?e:e.toString());return t<=100?1:t<=150?2:t<=200?3:4}if(t){const[e,i]=t.split("/").map(Number);if(!e||!i)return 3;const s=i/e;return s>=1.5?4:s>=1?3:2}return 3}static get version(){return"3.0.1"}}t([ht({type:Object})],St.prototype,"hass",void 0),t([ht({type:Object})],St.prototype,"config",void 0),t([dt()],St.prototype,"_resolvedConfig",void 0),t([dt()],St.prototype,"_progress",void 0),t([dt()],St.prototype,"_countdown",void 0),t([dt()],St.prototype,"_expired",void 0),t([dt()],St.prototype,"_validationResult",void 0),t([dt()],St.prototype,"_initialized",void 0);class At extends at{static get styles(){return a`
+    `;var T}getCardSize(){const{aspect_ratio:t="2/1",height:e}=this.config;if(e){const t=parseInt("string"==typeof e?e:e.toString());return t<=100?1:t<=150?2:t<=200?3:4}if(t){const[e,i]=t.split("/").map(Number);if(!e||!i)return 3;const s=i/e;return s>=1.5?4:s>=1?3:2}return 3}static get version(){return"3.0.2"}}t([ht({type:Object})],St.prototype,"hass",void 0),t([ht({type:Object})],St.prototype,"config",void 0),t([dt()],St.prototype,"_resolvedConfig",void 0),t([dt()],St.prototype,"_progress",void 0),t([dt()],St.prototype,"_countdown",void 0),t([dt()],St.prototype,"_expired",void 0),t([dt()],St.prototype,"_validationResult",void 0),t([dt()],St.prototype,"_initialized",void 0);class At extends at{static get styles(){return a`
       :host {
         display: inline-block;
         vertical-align: middle;
