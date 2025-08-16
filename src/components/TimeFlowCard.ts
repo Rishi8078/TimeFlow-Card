@@ -8,7 +8,7 @@ import { TemplateService } from '../services/TemplateService';
 import { CountdownService } from '../services/CountdownService';
 import { StyleManager } from '../utils/StyleManager';
 import { HomeAssistant, CountdownState, CardConfig, ActionHandlerEvent } from '../types/index';
-import { createActionHandler, createHandleAction } from '../utils/ActionHandler';
+import { createActionHandler, createHandleAction } from '../utils/action-handler';
 import '../utils/ErrorDisplay';
 
 export class TimeFlowCard extends LitElement {
