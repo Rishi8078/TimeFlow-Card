@@ -331,6 +331,9 @@ export class CountdownService {
           // Show info about available but inactive timers
           return `${alexaTimers.length} Alexa timer${alexaTimers.length === 1 ? '' : 's'} available`;
         }
+      } else {
+        // No Alexa timers found at all
+        return 'No timers';
       }
     }
     

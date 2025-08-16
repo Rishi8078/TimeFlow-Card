@@ -123,36 +123,64 @@ private static getAlexaTimerData(entityId: string, entity: any, hass: HomeAssist
   } else if (attributes.duration) {
     duration = this.parseDuration(attributes.duration);
     hasOriginalDuration = true;
-  } else {
+  } else if (finishesAt && entity.last_changed) {
+    // Try to calculate duration from finishesAt and last_changed (when timer was set)
+    const startTime = new Date(entity.last_changed).getTime();
+    const endTime = finishesAt.getTime();
+    if (!isNaN(startTime) && endTime > startTime) {
+      duration = Math.floor((endTime - startTime) / 1000);
+      hasOriginalDuration = true;
+    }
+  }
+  
+  if (!hasOriginalDuration) {
     // If no original duration, we can't calculate meaningful progress
     // For display purposes, we'll use remaining as duration, but handle progress specially
     duration = remaining > 0 ? remaining : 0;
     hasOriginalDuration = false;
   }
 
-  // Calculate progress - FIXED LOGIC
+  // Calculate progress - IMPROVED LOGIC 
   let progress = 0;
   if (hasOriginalDuration && duration > 0) {
     // We have a real original duration, calculate normal progress
-    if (isActive) {
+    if (isActive && remaining >= 0) {
       const elapsed = duration - remaining;
       progress = Math.min(100, Math.max(0, (elapsed / duration) * 100));
-    } else if (remaining === 0) {
-      progress = 100; // Timer finished
+    } else if (remaining === 0 && duration > 0) {
+      progress = 100; // Timer finished (only if we had a real duration)
     }
   } else {
-    // No original duration available - use time-based progress estimation
+    // No original duration available - handle differently for better accuracy
     if (isActive && remaining > 0) {
-      // For active timers without original duration, show progress based on a reasonable assumption
-      // We'll show progress as if this is a "medium" timer to give visual feedback
-      // This is imperfect but better than showing 0% progress
-      const assumedTotalTime = Math.max(remaining * 2, 300); // Assume at least 5 minutes or double remaining
-      const elapsed = assumedTotalTime - remaining;
-      progress = Math.min(100, Math.max(0, (elapsed / assumedTotalTime) * 100));
-    } else if (!isActive && remaining === 0) {
-      progress = 100; // Timer finished
+      // For Alexa timers without original duration, we need to be smarter
+      // Option 1: Use entity's last_changed to estimate start time
+      const lastChanged = entity.last_changed ? new Date(entity.last_changed).getTime() : Date.now();
+      const now = Date.now();
+      const timeSinceChanged = (now - lastChanged) / 1000; // seconds
+      
+      // If the timer was recently updated, we can estimate duration
+      if (timeSinceChanged < remaining) {
+        const estimatedDuration = remaining + timeSinceChanged;
+        const elapsed = timeSinceChanged;
+        progress = Math.min(100, Math.max(0, (elapsed / estimatedDuration) * 100));
+      } else {
+        // Fallback: start progress from 0% for active timers without duration
+        // This prevents the "75%" issue you're experiencing
+        progress = 0;
+      }
     } else {
-      progress = 0; // Timer not active
+      // No active timer OR no remaining time
+      // Check if this is actually a "no timer" state vs "timer finished" state
+      if (state === 'unavailable' || state === 'unknown' || state === 'none' || state === null || state === '') {
+        progress = 0; // No timer present - show empty progress
+      } else if (remaining === 0 && (isActive === false)) {
+        // This could be a finished timer, but without original duration we can't be sure
+        // Default to empty progress to avoid showing full progress incorrectly
+        progress = 0;
+      } else {
+        progress = 0; // Default case
+      }
     }
   }
 
@@ -393,7 +421,7 @@ private static getAlexaTimerData(entityId: string, entity: any, hass: HomeAssist
       } else if (timerData.remaining === 0 && timerData.progress >= 100) {
         return `Timer finished${timerData.alexaDevice ? ` on ${timerData.alexaDevice}` : ''}`;
       } else {
-        return `Timer ready${timerData.alexaDevice ? ` on ${timerData.alexaDevice}` : ''}`;
+        return `No timers${timerData.alexaDevice ? ` on ${timerData.alexaDevice}` : ''}`;
       }
     }
 
