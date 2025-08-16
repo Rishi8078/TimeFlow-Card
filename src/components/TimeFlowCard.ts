@@ -7,7 +7,7 @@ import { ConfigValidator, ValidationResult, ValidationError } from '../utils/Con
 import { TemplateService } from '../services/TemplateService';
 import { CountdownService } from '../services/CountdownService';
 import { StyleManager } from '../utils/StyleManager';
-import { HomeAssistant, CountdownState, CardConfig } from '../types/index';
+import { HomeAssistant, CountdownState, CardConfig, ActionHandlerEvent } from '../types/index';
 import { createActionHandler, createHandleAction } from '../utils/ActionHandler';
 import '../utils/ErrorDisplay';
 
@@ -464,30 +464,32 @@ export class TimeFlowCard extends LitElement {
       (this._expired && expired_animation) ? 'expired' : ''
     ].filter(Boolean).join(' ');
 
-    // Create resolved config with default actions for timer entities
+    // Create resolved config 
     const configWithDefaults = { ...this._resolvedConfig };
     
-    // Add default tap action for timer entities if none is configured
-    if (!configWithDefaults.tap_action) {
-      const currentTimerEntity = this.countdownService.getCurrentTimerEntity(configWithDefaults, this.hass);
-      if (currentTimerEntity) {
-        configWithDefaults.tap_action = {
-          action: 'more-info',
-          entity: currentTimerEntity
-        };
-      }
+    // Map timer_entity to entity field for action handling compatibility
+    if (configWithDefaults.timer_entity && !configWithDefaults.entity) {
+      configWithDefaults.entity = configWithDefaults.timer_entity;
+    }
+    
+    // Following timer-bar-card pattern: Set default tap action if entity exists but no tap action defined
+    if (configWithDefaults.entity && !configWithDefaults.tap_action) {
+      configWithDefaults.tap_action = { action: 'more-info' };
     }
 
-    // Check if any actions are configured (including defaults)
-    const hasActions = configWithDefaults.tap_action || configWithDefaults.hold_action || configWithDefaults.double_tap_action;
+    // Check if tap action should show pointer cursor (following timer-bar-card logic)
+    const shouldShowPointer = configWithDefaults.tap_action?.action !== "none";
+    
+    // Enable action handlers when we have actions (following timer-bar-card pattern)
+    const shouldEnableActions = configWithDefaults.tap_action || configWithDefaults.hold_action || configWithDefaults.double_tap_action;
 
     return html`
       <ha-card 
         class="${cardClasses}" 
         style="${cardStyles}"
-        ?actionHandler=${hasActions}
-        .actionHandler=${hasActions ? createActionHandler(configWithDefaults) : undefined}
-        @action=${hasActions && this.hass ? createHandleAction(this.hass, configWithDefaults) : undefined}
+        ?actionHandler=${shouldEnableActions}
+        .actionHandler=${shouldEnableActions ? createActionHandler(configWithDefaults) : undefined}
+        @action=${shouldEnableActions && this.hass ? createHandleAction(this.hass, configWithDefaults) : undefined}
       >
         <div class="card-content">
           <header class="header">
