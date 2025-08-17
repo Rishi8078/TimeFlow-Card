@@ -3,7 +3,34 @@
 All notable changes to TimeFlow Card will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0/).
+
+## [3.0.3] - 2025-08-17
+
+This release focuses on robust Alexa timer lifecycle handling, auto-discovery improvements, and consistent expired messaging.
+
+### 🔧 Fixed
+
+- **Paused Timers in Auto-Discovery**: Paused Alexa timers are now included in auto-discovery and selectable when no active timers exist.
+- **Attribute-Driven Status**: Timer status and label are now derived from rich attributes, ignoring entity.state for reliability.
+- **Finished State Robustness**: Finished timers show "<label> timer complete" immediately at finish, even while still listed as active, and remain until removed from active.
+- **ID-Based Pinning**: Per-entity cache tracks finished timer IDs to avoid mislabeling when multiple Alexa timers exist.
+- **Discovery Filtering**: Only entities with active or paused timers are included in auto-discovery; 
+- **Expired Messaging Consistency**: Auto-discovery main display and subtitle now use the same logic as explicit Alexa timers, showing "<label> timer complete" or "Timer complete" as appropriate.
+
+
+### 📝 Changed
+
+- **Auto-Discovery Selection**: Auto-discovery now prefers active timers, then paused, and falls back to "No timers" if none are available.
+- **Subtitle and Main Display**: Both now use TimerEntityService.getTimerSubtitle for expired states, ensuring consistent messaging.
+- **UI Reactivity**: Improved card reactivity so expired/finished states update live, avoiding stale "Completed! 🎉" text.
+
+### 🚀 Features
+
+- **Robust Alexa Timer Lifecycle**: Handles active, paused, and finished states with attribute-first logic and ID-based tracking.
+- **Consistent Expired Messaging**: "Timer complete" and "<label> timer complete" are shown for finished Alexa timers in all display modes.
+- **No Timers Detection**: Card reliably shows "No timers" when no active or paused timers remain, without requiring a manual refresh.
+
 ## [3.0.2] - 2025-08-16
 
 This release focuses on fixing issues with Action handing and improving Alexa timers.
