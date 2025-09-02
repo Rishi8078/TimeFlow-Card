@@ -80,6 +80,45 @@ export class TimeFlowCardEditor extends LitElement {
         }));
     }
 
+    // Return true when the target_date looks like a dynamic value (sensor/template)
+    private _isDynamicTarget(value: any): boolean {
+        if (!value) return false;
+        const s = String(value).trim();
+        if (!s) return false;
+        // treat sensor.* or template markers as dynamic
+        if (s.startsWith('sensor.') || s.includes('{{') || s.includes('}}') || s.toLowerCase().includes('template')) return true;
+        // if it doesn't parse as a date, treat as dynamic (allow template strings)
+        const parsed = Date.parse(s);
+        return isNaN(parsed);
+    }
+
+    // Convert an ISO/parsable date to the input[type=datetime-local] value (local time without seconds)
+    private _toDatetimeLocal(value: any): string {
+        if (!value) return '';
+        const d = new Date(String(value));
+        if (isNaN(d.getTime())) return '';
+        const pad = (n: number) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    // Handle changes from the datetime-local input and store as an ISO timestamp
+    private _datetimeLocalChanged(ev: Event) {
+        const target = ev.target as HTMLInputElement;
+        const v = target.value; // e.g. "2025-09-02T13:45"
+        if (!v) {
+            this._valueChanged('target_date' as keyof CardConfig, '');
+            return;
+        }
+        // Create a Date from the local datetime value (treated as local time) and convert to ISO
+        const d = new Date(v);
+        if (isNaN(d.getTime())) {
+            // fallback: store raw value
+            this._valueChanged('target_date' as keyof CardConfig, v);
+            return;
+        }
+        this._valueChanged('target_date' as keyof CardConfig, d.toISOString());
+    }
+
     render(): TemplateResult {
         const cfg = this._config || {};
 
@@ -95,12 +134,20 @@ export class TimeFlowCardEditor extends LitElement {
 
       <div class="row">
         <label>Target date</label>
-        <input
-          type="text"
-          placeholder="2025-12-31T23:59:59 or sensor.my_date or template"
-          .value="${cfg.target_date || ''}"
-          @input="${(e: Event) => this._valueChanged('target_date', (e.target as HTMLInputElement).value)}"
-        />
+        ${this._isDynamicTarget(cfg.target_date) ? html`
+          <input
+            type="text"
+            placeholder="sensor.my_date or template"
+            .value="${cfg.target_date || ''}"
+            @input="${(e: Event) => this._valueChanged('target_date', (e.target as HTMLInputElement).value)}"
+          />
+        ` : html`
+          <input
+            type="datetime-local"
+            .value="${this._toDatetimeLocal(cfg.target_date)}"
+            @input="${(e: Event) => this._datetimeLocalChanged(e)}"
+          />
+        `}
       </div>
 
       <div class="row">
