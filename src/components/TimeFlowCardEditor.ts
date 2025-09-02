@@ -143,18 +143,29 @@ export class TimeFlowCardEditor extends LitElement {
         const schema = [
             { name: 'title', required: false, selector: { text: {} } },
             { name: 'subtitle', required: false, selector: { text: {} } },
+            { name: 'expired_text', required: false, selector: { text: {} } },
+            { name: 'creation_date', required: false, selector: { datetime: {} } },
             { name: 'target_date', required: false, selector: { datetime: {} } },
             { name: 'timer_entity', required: false, selector: { entity: { domain: 'timer' } } },
             { name: 'progress_color', required: false, selector: { color: {} } },
             { name: 'background_color', required: false, selector: { color: {} } },
-            { name: 'show_days', required: false, selector: { boolean: {} } },
-            { name: 'show_hours', required: false, selector: { boolean: {} } },
-            { name: 'show_minutes', required: false, selector: { boolean: {} } },
-            { name: 'show_seconds', required: false, selector: { boolean: {} } },
+            {
+                type: "grid",
+                schema: [
+                    { name: 'show_days', required: false, selector: { boolean: {} } },
+                    { name: 'show_hours', required: false, selector: { boolean: {} } },
+                    { name: 'show_minutes', required: false, selector: { boolean: {} } },
+                    { name: 'show_seconds', required: false, selector: { boolean: {} } },
+                ]
+            },
             { name: 'show_progress_text', required: false, selector: { boolean: {} } },
-            { name: 'stroke_width', required: false, selector: { number: { min: 1, max: 50 } } },
-            { name: 'icon_size', required: false, selector: { number: { min: 10, max: 1000 } } },
-            { name: 'expired_text', required: false, selector: { text: {} } },
+            {
+                type: "grid",
+                schema: [
+                    { name: 'stroke_width', required: false, selector: { number: { min: 1, max: 50 } } },
+                    { name: 'icon_size', required: false, selector: { number: { min: 10, max: 1000 } } },
+                ]
+            },
             { name: 'debug', required: false, selector: { boolean: {} } },
         ];
 
