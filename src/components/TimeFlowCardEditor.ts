@@ -119,6 +119,16 @@ export class TimeFlowCardEditor extends LitElement {
         this._valueChanged('target_date' as keyof CardConfig, d.toISOString());
     }
 
+    // Return list of timer.* entity ids from hass
+    private _getTimerEntities(): string[] {
+        try {
+            if (!this.hass || !this.hass.states) return [];
+            return Object.keys(this.hass.states).filter((id: string) => id.startsWith('timer.'));
+        } catch (e) {
+            return [];
+        }
+    }
+
     render(): TemplateResult {
         const cfg = this._config || {};
 
@@ -129,6 +139,15 @@ export class TimeFlowCardEditor extends LitElement {
           type="text"
           .value="${cfg.title || ''}"
           @input="${(e: Event) => this._valueChanged('title', (e.target as HTMLInputElement).value)}"
+        />
+      </div>
+
+      <div class="row">
+        <label>Subtitle</label>
+        <input
+          type="text"
+          .value="${cfg.subtitle || ''}"
+          @input="${(e: Event) => this._valueChanged('subtitle', (e.target as HTMLInputElement).value)}"
         />
       </div>
 
@@ -154,19 +173,14 @@ export class TimeFlowCardEditor extends LitElement {
         <label>Timer entity</label>
         <input
           type="text"
+          list="timeflow-timer-entities"
           placeholder="timer.my_timer"
           .value="${cfg.timer_entity || ''}"
           @input="${(e: Event) => this._valueChanged('timer_entity', (e.target as HTMLInputElement).value)}"
         />
-      </div>
-
-      <div class="row">
-        <label>Subtitle</label>
-        <input
-          type="text"
-          .value="${cfg.subtitle || ''}"
-          @input="${(e: Event) => this._valueChanged('subtitle', (e.target as HTMLInputElement).value)}"
-        />
+        <datalist id="timeflow-timer-entities">
+          ${this._getTimerEntities().map(eid => html`<option value="${eid}"></option>`)}
+        </datalist>
       </div>
 
       <div class="row">
