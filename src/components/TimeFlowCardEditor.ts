@@ -129,140 +129,43 @@ export class TimeFlowCardEditor extends LitElement {
         }
     }
 
+    private _formChanged(ev: CustomEvent) {
+        const value = ev.detail?.value || {};
+        // Merge with existing config and keep the card type
+        const newConfig = { ...(this._config || {}), ...value, type: this._config?.type || 'custom:timeflow-card' } as CardConfig;
+        this._config = newConfig;
+        this._fireConfigChanged(newConfig);
+    }
+
     render(): TemplateResult {
         const cfg = this._config || {};
 
+        const schema = [
+            { name: 'title', required: false, selector: { text: {} } },
+            { name: 'subtitle', required: false, selector: { text: {} } },
+            { name: 'target_date', required: false, selector: { datetime: {} } },
+            { name: 'timer_entity', required: false, selector: { entity: { domain: 'timer' } } },
+            { name: 'progress_color', required: false, selector: { color: {} } },
+            { name: 'background_color', required: false, selector: { color: {} } },
+            { name: 'show_days', required: false, selector: { boolean: {} } },
+            { name: 'show_hours', required: false, selector: { boolean: {} } },
+            { name: 'show_minutes', required: false, selector: { boolean: {} } },
+            { name: 'show_seconds', required: false, selector: { boolean: {} } },
+            { name: 'show_progress_text', required: false, selector: { boolean: {} } },
+            { name: 'stroke_width', required: false, selector: { number: { min: 1, max: 50 } } },
+            { name: 'icon_size', required: false, selector: { number: { min: 10, max: 1000 } } },
+            { name: 'expired_text', required: false, selector: { text: {} } },
+            { name: 'debug', required: false, selector: { boolean: {} } },
+        ];
+
         return html`
-      <div class="row">
-        <label>Title</label>
-        <input
-          type="text"
-          .value="${cfg.title || ''}"
-          @input="${(e: Event) => this._valueChanged('title', (e.target as HTMLInputElement).value)}"
-        />
-      </div>
-
-      <div class="row">
-        <label>Subtitle</label>
-        <input
-          type="text"
-          .value="${cfg.subtitle || ''}"
-          @input="${(e: Event) => this._valueChanged('subtitle', (e.target as HTMLInputElement).value)}"
-        />
-      </div>
-
-      <div class="row">
-        <label>Target date</label>
-        ${this._isDynamicTarget(cfg.target_date) ? html`
-          <input
-            type="text"
-            placeholder="sensor.my_date or template"
-            .value="${cfg.target_date || ''}"
-            @input="${(e: Event) => this._valueChanged('target_date', (e.target as HTMLInputElement).value)}"
-          />
-        ` : html`
-          <input
-            type="datetime-local"
-            .value="${this._toDatetimeLocal(cfg.target_date)}"
-            @input="${(e: Event) => this._datetimeLocalChanged(e)}"
-          />
-        `}
-      </div>
-
-      <div class="row">
-        <label>Timer entity</label>
-        <input
-          type="text"
-          list="timeflow-timer-entities"
-          placeholder="timer.my_timer"
-          .value="${cfg.timer_entity || ''}"
-          @input="${(e: Event) => this._valueChanged('timer_entity', (e.target as HTMLInputElement).value)}"
-        />
-        <datalist id="timeflow-timer-entities">
-          ${this._getTimerEntities().map(eid => html`<option value="${eid}"></option>`)}
-        </datalist>
-      </div>
-
-      <div class="row">
-        <label>Progress color</label>
-        <input
-          type="color"
-          .value="${(cfg.progress_color as string) || '#4caf50'}"
-          @input="${(e: Event) => this._valueChanged('progress_color', (e.target as HTMLInputElement).value)}"
-        />
-        <label style="min-width:70px">Background</label>
-        <input
-          type="color"
-          .value="${(cfg.background_color as string) || '#1a1a1a'}"
-          @input="${(e: Event) => this._valueChanged('background_color', (e.target as HTMLInputElement).value)}"
-        />
-      </div>
-
-      <div class="row">
-        <label>Show days</label>
-        <div class="checkbox">
-          <input type="checkbox" ?checked="${cfg.show_days !== false}" @change="${(e: Event) => this._toggleBoolean('show_days', e)}" />
-        </div>
-
-        <label style="min-width:80px">Show hours</label>
-        <div class="checkbox">
-          <input type="checkbox" ?checked="${cfg.show_hours !== false}" @change="${(e: Event) => this._toggleBoolean('show_hours', e)}" />
-        </div>
-      </div>
-
-      <div class="row">
-        <label>Show minutes</label>
-        <div class="checkbox">
-          <input type="checkbox" ?checked="${cfg.show_minutes !== false}" @change="${(e: Event) => this._toggleBoolean('show_minutes', e)}" />
-        </div>
-
-        <label style="min-width:80px">Show seconds</label>
-        <div class="checkbox">
-          <input type="checkbox" ?checked="${cfg.show_seconds !== false}" @change="${(e: Event) => this._toggleBoolean('show_seconds', e)}" />
-        </div>
-      </div>
-
-      <div class="row">
-        <label>Show progress text</label>
-        <div class="checkbox">
-          <input type="checkbox" ?checked="${cfg.show_progress_text === true}" @change="${(e: Event) => this._toggleBoolean('show_progress_text', e)}" />
-        </div>
-
-        <label style="min-width:80px">Stroke width</label>
-        <input
-          type="number"
-          min="1"
-          max="50"
-          .value="${cfg.stroke_width ?? 15}"
-          @input="${(e: Event) => this._valueChanged('stroke_width', Number((e.target as HTMLInputElement).value))}"
-        />
-      </div>
-
-      <div class="row">
-        <label>Icon size</label>
-        <input
-          type="number"
-          min="10"
-          max="1000"
-          .value="${cfg.icon_size ?? 100}"
-          @input="${(e: Event) => this._valueChanged('icon_size', Number((e.target as HTMLInputElement).value))}"
-        />
-      </div>
-
-      <div class="row">
-        <label>Expired text</label>
-        <input
-          type="text"
-          .value="${cfg.expired_text || ''}"
-          @input="${(e: Event) => this._valueChanged('expired_text', (e.target as HTMLInputElement).value)}"
-        />
-      </div>
-
-      <div class="row">
-        <label>Debug</label>
-        <div class="checkbox">
-          <input type="checkbox" ?checked="${cfg.debug === true}" @change="${(e: Event) => this._toggleBoolean('debug', e)}" />
-        </div>
+      <div style="padding: 8px;">
+        <ha-form
+          .hass=${this.hass}
+          .data=${cfg}
+          .schema=${schema}
+          @value-changed=${(e: CustomEvent) => this._formChanged(e)}
+        ></ha-form>
       </div>
     `;
     }
