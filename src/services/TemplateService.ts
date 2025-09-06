@@ -245,7 +245,7 @@ export class TemplateService {
     // Check common template-enabled properties
     const templateProperties = [
       'target_date', 'creation_date', 'title', 'subtitle',
-      'color', 'background_color', 'progress_color', 'primary_color', 'secondary_color'
+      'text_color', 'background_color', 'progress_color', 'primary_color', 'secondary_color'
     ];
     
     return templateProperties.some(prop => 

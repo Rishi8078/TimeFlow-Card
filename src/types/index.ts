@@ -81,7 +81,7 @@ export interface CardConfig {
   double_tap_action?: ActionConfig;
   
   // Styling
-  color?: string;
+  text_color?: string;
   background_color?: string;
   progress_color?: string;
   primary_color?: string;

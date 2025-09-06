@@ -343,7 +343,7 @@ export class TimeFlowCard extends LitElement {
       'timer_entity',
       'title',
       'subtitle',
-      'color',
+      'text_color',
       'background_color',
       'progress_color',
       'primary_color',
@@ -396,7 +396,7 @@ export class TimeFlowCard extends LitElement {
     const {
       title,
       subtitle,
-      color,
+      text_color,
       background_color,
       progress_color,
       stroke_width,
@@ -411,8 +411,8 @@ export class TimeFlowCard extends LitElement {
 
     // FIXED: Ensure background color has a sensible default
     const cardBackground = background_color || 'var(--card-background, var(--primary-background-color, #1a1a1a))';
-    const textColor = color || 'var(--primary-text-color, #fff)';
-    const mainProgressColor = progress_color || color || 'var(--progress-color, #4caf50)';
+    const textColor = text_color || 'var(--primary-text-color, #fff)';
+    const mainProgressColor = progress_color || text_color || 'var(--progress-color, #4caf50)';
 
     // Calculate dynamic circle size based on card dimensions to prevent overflow
     const dynamicCircleSize = this.styleManager.calculateDynamicIconSize(width, height, aspect_ratio, icon_size);

@@ -90,7 +90,7 @@ export class ConfigValidator {
     }
     
     // Validate colors
-    const colorFields = ['color', 'background_color', 'progress_color'];
+    const colorFields = ['text_color', 'background_color', 'progress_color'];
     colorFields.forEach(field => {
       if (config[field] && !this.isValidColorInput(config[field])) {
         errors.push({
