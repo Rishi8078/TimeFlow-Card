@@ -19,6 +19,7 @@ declare global {
 import { TimeFlowCard } from './components/TimeFlowCard';
 import { ProgressCircle } from './components/ProgressCircle';
 import { ErrorDisplay } from './utils/ErrorDisplay';
+import { TimeFlowCardEditor } from './components/TimeFlowCardEditor';
 
 // Register Lit custom elements with duplicate protection
 if (!customElements.get('error-display')) {
@@ -38,6 +39,15 @@ if (!customElements.get('timeflow-card')) {
 } else {
   // Component already registered
 }
+
+if (!customElements.get('timeflow-card-editor')) {
+  customElements.define('timeflow-card-editor', TimeFlowCardEditor);
+} else {
+  // Component already registered
+}
+
+// Editor registration hint for Lovelace (the editor element itself is registered in its file)
+window.customCards = window.customCards || [];
 
 // Register the card with Home Assistant
 window.customCards = window.customCards || [];

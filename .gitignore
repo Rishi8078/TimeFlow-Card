@@ -127,3 +127,9 @@ __tests__/
 .jest-cache/
 junit.xml
 coverage.xml
+
+# Test environment files
+config/
+dist/
+configuration.yaml
+docker-compose.yaml
