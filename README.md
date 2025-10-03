@@ -41,6 +41,7 @@ This card offers a wide range of options to customize its appearance and behavio
 | :-- | :-- | :-- | :-- |
 | `target_date` | string | `null` | Countdown target. Can be ISO date string, Home Assistant entity ID, or a template. |
 | `creation_date` | string | `null` | Start date for progress calculation. ISO date, entity ID, or template. |
+| `creation_relative` | number | `null` | The number of seconds before the `target_date` that the progress circle should start. Use this relative value as an alternative to specifying a fixed `creation_date`. |
 | `timer_entity` | string | `null` | Home Assistant `timer` entity. Overrides `target_date`. |
 | `title` | string | `"Countdown Timer"` | Main title of the card. Supports templates. |
 | `subtitle` | string | `null` | Subtitle for the card. Supports templates. |
