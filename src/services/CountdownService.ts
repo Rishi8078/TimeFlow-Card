@@ -251,7 +251,7 @@ export class CountdownService {
 
     const progress = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
     
-    return this.expired ? 100 : progress;
+    return (this.expired && !config.progress_offset) ? 100 : progress;
   }
 
   /**
