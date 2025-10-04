@@ -236,11 +236,19 @@ export class CountdownService {
     } else {
       creationDate = now; // Fallback to now if somehow no creation date
     }
-    
+
+    // Total progress duration in miliseconds
     const totalDuration = targetDate - creationDate;
     if (totalDuration <= 0) return 100;
     
-    const elapsed = now - creationDate;
+    // Elapsed progress in miliseconds
+    let elapsed = now - creationDate;
+
+    // Apply progress_offset
+    if (config.progress_offset && typeof config.progress_offset === 'number') {
+      elapsed -= config.progress_offset * 1000;
+    }
+
     const progress = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
     
     return this.expired ? 100 : progress;

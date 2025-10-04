@@ -56,6 +56,7 @@ export interface CardConfig {
   // Basic countdown configuration
   target_date?: string;
   creation_date?: string;
+  progress_offset?: number;
   
   // Timer entity configuration (enhanced for Alexa)
   timer_entity?: string;
