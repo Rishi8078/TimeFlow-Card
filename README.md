@@ -41,6 +41,8 @@ This card offers a wide range of options to customize its appearance and behavio
 | :-- | :-- | :-- | :-- |
 | `target_date` | string | `null` | Countdown target. Can be ISO date string, Home Assistant entity ID, or a template. |
 | `creation_date` | string | `null` | Start date for progress calculation. ISO date, entity ID, or template. |
+| `creation_relative` | number | `null` | The number of seconds before the `target_date` that the progress circle should start. Use this relative value as an alternative to specifying a fixed `creation_date`. |
+| `progress_offset` | number | `null` | Number of seconds to offset the progress circle (does not affect countdown text). Positive values delay the progress, negative values move it ahead. Examples: `300` (5 min late), `-60` (1 min early). |
 | `timer_entity` | string | `null` | Home Assistant `timer` entity. Overrides `target_date`. |
 | `title` | string | `"Countdown Timer"` | Main title of the card. Supports templates. |
 | `subtitle` | string | `null` | Subtitle for the card. Supports templates. |
@@ -392,6 +394,45 @@ card_mod:
     }
 
 ```
+</details>
+
+-----
+
+### 🍕 Pizza Timer with Safety Buffer
+
+![pizza](assets/thumbnail.png)
+
+A practical timer that uses `progress_offset` to complete the progress circle 2 minutes before the actual timer ends, giving you time to prepare and get the pizza out safely.
+
+<details>
+<summary>View YAML</summary>
+
+```yaml
+type: custom:timeflow-card
+title: "🍕 Pizza in Oven"
+target_date: "{{ now() + timedelta(minutes=15) }}"
+creation_relative: 900  # 15 minutes total
+progress_offset: 120    # Progress completes 2 min early
+progress_color: "#FF6B35"
+background_color: "#1a1a1a"
+color: "#FFFFFF"
+expired_text: "Pizza is ready! 🍕"
+show_hours: false
+show_minutes: true
+show_seconds: true
+stroke_width: 12
+card_mod:
+  style: |
+    ha-card .title {
+      font-size: 2rem;
+    }
+```
+
+**How it works:**
+- Countdown text shows the actual time remaining (15:00 → 00:00)
+- Progress circle reaches 100% at 02:00 (2 minutes before timer ends)
+- Gives you a visual heads-up to prepare before the pizza is done
+
 </details>
 
 -----

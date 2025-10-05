@@ -35,6 +35,7 @@ export class TimeFlowCardEditor extends LitElement {
         const helpers: Record<string, string> = {
             'creation_date': 'Examples: "2024-01-01T00:00:00", "{{ now() }}", "{{ states(\'input_datetime.start\') }}"',
             'target_date': 'Examples: "2024-12-31T23:59:59", "{{ states(\'input_datetime.deadline\') }}"',
+            'progress_offset': 'Number of seconds to offset the progress circle. Does not affect the countdown text. Examples: 60 (for 1 minute), -300 (for 5 minutes earlier)',
             'progress_color': 'Examples: "#FF0000", "red", "rgb(255,0,0)", "{{ states(\'input_text.color\') }}"',
             'background_color': 'Examples: "#00FF00", "blue", "rgba(0,255,0,0.5)", "{{ \'red\' if is_state(\'switch.alert\', \'on\') else \'green\' }}"',
             'color': 'Examples: "#333333", "white", "rgb(0,0,0)", "{{ states(\'input_text.color\') }}"',
@@ -123,6 +124,7 @@ export class TimeFlowCardEditor extends LitElement {
                         ]
                     },
                     { name: 'show_progress_text', required: false, selector: { boolean: {} } },
+                    { name: 'progress_offset', required: false, selector: { number: {} } },
                 ]
             }
         ];
