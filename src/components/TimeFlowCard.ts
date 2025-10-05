@@ -197,6 +197,7 @@ export class TimeFlowCard extends LitElement {
     return {
       type: 'custom:timeflow-card',
       target_date: '2025-12-31T23:59:59',
+      target_date_offset: undefined,
       creation_date: '2024-12-31T23:59:59',
       timer_entity: '',
       title: 'New Year Countdown',

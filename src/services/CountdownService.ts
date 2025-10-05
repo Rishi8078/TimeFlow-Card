@@ -91,7 +91,15 @@ export class CountdownService {
       }
       
       // Use the helper method for consistent date parsing
-      const targetDate = this.dateParser.parseISODate(targetDateValue);
+      let targetDate = this.dateParser.parseISODate(targetDateValue);
+
+      // Apply target_date_offset if specified
+      if (
+        config.target_date_offset &&
+        typeof config.target_date_offset === "number"
+      ) {
+        targetDate += config.target_date_offset * 1000; // Convert seconds to milliseconds
+      }
       
       if (isNaN(targetDate)) {
         return this.timeRemaining;
@@ -220,7 +228,16 @@ export class CountdownService {
     if (!targetDateValue) return 0;
     
     // Use the helper method for consistent date parsing
-    const targetDate = this.dateParser.parseISODate(targetDateValue);
+    let targetDate = this.dateParser.parseISODate(targetDateValue);
+
+    // Apply target_date_offset if specified
+    if (
+      config.target_date_offset &&
+      typeof config.target_date_offset === "number"
+    ) {
+      targetDate += config.target_date_offset * 1000; // Convert seconds to milliseconds
+    }
+    
     const now = Date.now();
     
     let creationDate;

@@ -35,6 +35,7 @@ export class TimeFlowCardEditor extends LitElement {
         const helpers: Record<string, string> = {
             'creation_date': 'Examples: "2024-01-01T00:00:00", "{{ now() }}", "{{ states(\'input_datetime.start\') }}"',
             'target_date': 'Examples: "2024-12-31T23:59:59", "{{ states(\'input_datetime.deadline\') }}"',
+            'target_date_offset': 'Offset in seconds to adjust the "target_date". Positive values move the target into the future, negative values into the past. Examples: 300 (adds 5 minutes), -60 (subtracts 1 minute).',
             'progress_color': 'Examples: "#FF0000", "red", "rgb(255,0,0)", "{{ states(\'input_text.color\') }}"',
             'background_color': 'Examples: "#00FF00", "blue", "rgba(0,255,0,0.5)", "{{ \'red\' if is_state(\'switch.alert\', \'on\') else \'green\' }}"',
             'color': 'Examples: "#333333", "white", "rgb(0,0,0)", "{{ states(\'input_text.color\') }}"',
@@ -71,6 +72,7 @@ export class TimeFlowCardEditor extends LitElement {
             { name: 'expired_text', required: false, selector: { text: {} } },
             { name: 'creation_date', required: false, selector: { text: {} } },
             { name: 'target_date', required: false, selector: { text: {} } },
+            { name: "target_date_offset", required: false, selector: { number: {} } },
             { name: 'timer_entity', required: false, selector: { entity: { domain: 'timer' } } },
             {
                 type: "expandable",

@@ -40,6 +40,7 @@ This card offers a wide range of options to customize its appearance and behavio
 | Option | Type | Default | Description |
 | :-- | :-- | :-- | :-- |
 | `target_date` | string | `null` | Countdown target. Can be ISO date string, Home Assistant entity ID, or a template. |
+| `target_date_offset` | number | `null` | The number of seconds to offset the `target_date`. Positive value moves the date forward to the future, negative value moves it backward. Example: 300 (adds 5 minutes), -60 (subtracts 1 minute). |
 | `creation_date` | string | `null` | Start date for progress calculation. ISO date, entity ID, or template. |
 | `timer_entity` | string | `null` | Home Assistant `timer` entity. Overrides `target_date`. |
 | `title` | string | `"Countdown Timer"` | Main title of the card. Supports templates. |
