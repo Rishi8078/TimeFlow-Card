@@ -224,7 +224,12 @@ export class CountdownService {
     const now = Date.now();
     
     let creationDate;
-    if (config.creation_date) {
+
+    // Priority: creation_relative > creation_date > now
+    if (config.creation_relative && typeof config.creation_relative === "number") {
+      // Calculate creation_date as target_date - creation_relative seconds
+      creationDate = targetDate - config.creation_relative * 1000;
+    } else if (config.creation_date) {
       const creationDateValue = await this.templateService.resolveValue(config.creation_date);
       
       if (creationDateValue) {
