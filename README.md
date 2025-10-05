@@ -62,7 +62,7 @@ This card offers a wide range of options to customize its appearance and behavio
 
 
 ## Examples
-
+![TimeFlow Card Showcase](assets/Showcase.png)
 ### 🗓️ Daily Agenda Countdown
 
 ![calendar](assets/calendar.png)
