@@ -57,13 +57,18 @@ export class TimeFlowCard extends LitElement {
         display: flex;
         flex-direction: column;
         padding: 0;
-        border-radius: 22px;
+        /* Use HA theme border-radius: defaults to 12px, respects user theme */
+        border-radius: var(--ha-card-border-radius, var(--ha-border-radius-lg, 12px));
         position: relative;
         overflow: hidden;
-        /* IMPORTANT: Set default background immediately */
-        background: var(--card-background, var(--primary-background-color, #1a1a1a));
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        border: none;
+        /* Use HA theme background: respects user theme changes */
+        background: var(--ha-card-background, var(--ha-card-background-color, #1a1a1a));
+        /* Use HA theme box-shadow: respects user theme */
+        box-shadow: var(--ha-card-box-shadow, 0 2px 10px rgba(0, 0, 0, 0.1));
+        /* Use HA theme border: respects user theme */
+        border-width: var(--ha-card-border-width, 1px);
+        border-style: solid;
+        border-color: var(--ha-card-border-color, var(--divider-color, #e0e0e0));
         /* REMOVED: transition that causes flash - only animate specific properties if needed */
         /* transition: background-color 0.3s ease; */
         min-height: 120px; /* Prevent layout shift */
@@ -410,7 +415,7 @@ export class TimeFlowCard extends LitElement {
     } = this._resolvedConfig;
 
     // FIXED: Ensure background color has a sensible default
-    const cardBackground = background_color || 'var(--card-background, var(--primary-background-color, #1a1a1a))';
+    const cardBackground = background_color || 'var(--ha-card-background, var(--ha-card-background-color, #1a1a1a))';
     const textColor = text_color || 'var(--primary-text-color, #fff)';
     const mainProgressColor = progress_color || text_color || 'var(--progress-color, #4caf50)';
 
