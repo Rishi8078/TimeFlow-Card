@@ -396,6 +396,82 @@ card_mod:
 
 -----
 
+### 🎆 New Year Countdown with Background Image
+
+![New Year](assets/exam.png)
+
+A festive countdown to New Year's Eve that automatically calculates the next New Year and features a custom background image. This example combines dynamic date calculation with beautiful styling to create an eye-catching celebration countdown.
+
+**Note:** To use your own background image, replace `/local/newyear.jpg` in the code below with the path to your image file. Your image should be located in your Home Assistant's `config/www` directory. You can use images (`.jpg`, `.png`) or animated GIFs (`.gif`).
+
+<details>
+<summary>View YAML</summary>
+
+```yaml
+type: custom:timeflow-card
+title: 🎆 New Year Countdown
+subtitle: "{{ now().year + (1 if now().month == 12 and now().day == 31 else 0) + 1 }}"
+target_date: >-
+  {% set current_date = now() %}
+  {% set current_year = current_date.year %}
+  {% if current_date.month == 12 and current_date.day == 31 %}
+    {% set next_year = current_year + 1 %}
+  {% else %}
+    {% set next_year = current_year + 1 %}
+  {% endif %}
+  {{ current_date.replace(year=next_year, month=1, day=1, hour=0, minute=0, second=0, microsecond=0).isoformat() }}
+creation_date: >-
+  {% set current_date = now() %}
+  {{ current_date.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0).isoformat() }}
+show_months: false
+show_days: true
+show_hours: true
+show_minutes: true
+show_seconds: true
+color: "#FFFFFF"
+progress_color: "#FFD700"
+stroke_width: 8
+expired_text: "🎉 Happy New Year! 🎊"
+expired_animation: true
+card_mod:
+  style: |
+    ha-card {
+      position: relative;
+      overflow: hidden;
+      background-color: transparent !important;
+      border-radius: 20px !important;
+    }
+    ha-card::before {
+      content: "";
+      position: absolute;
+      top: 0; right: 0; bottom: 0; left: 0;
+      background: url("/local/newyear.jpg") center/cover no-repeat;
+      filter: blur(1px);
+      transform: scale(1.1);
+      z-index: 1;
+    }
+    ha-card::after {
+      content: "";
+      position: absolute;
+      top: 0; right: 0; bottom: 0; left: 0;
+      background-color: rgba(0,0,0,0.45);
+      z-index: 2;
+    }
+    ha-card .title {
+      font-size: 2.5rem;
+      font-weight: bold;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    }
+    ha-card .subtitle {
+      font-size: 2rem;
+      font-weight: bold;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    }
+```
+</details>
+
+-----
+
 ### 💾 Grid Layout with Multiple Timers
 
 ![grid](assets/grid.png)
