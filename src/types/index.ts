@@ -57,16 +57,16 @@ export interface CardConfig {
   target_date?: string;
   creation_date?: string;
   
-  // Timer entity configuration (enhanced for Alexa)
+  // Timer entity configuration (enhanced for Alexa and Google Home)
   timer_entity?: string;
   auto_discover_alexa?: boolean; // NEW: Automatically find and use Alexa timers
+  auto_discover_google?: boolean; // NEW: Automatically find and use Google Home timers
   alexa_device_filter?: string[];  // NEW: Only use timers from specific Alexa devices
   prefer_labeled_timers?: boolean; // NEW: Prefer timers with labels over unnamed ones
   
   // Display configuration
   title?: string;
   subtitle?: string;
-  show_progress_text?: boolean;
   
   // Time unit visibility
   show_months?: boolean;
@@ -74,6 +74,9 @@ export interface CardConfig {
   show_hours?: boolean;
   show_minutes?: boolean;
   show_seconds?: boolean;
+  
+  // Subtitle format configuration
+  compact_format?: boolean;  // Use compact format (auto-enabled if 3+ units shown)
   
   // Action configuration
   tap_action?: ActionConfig;
