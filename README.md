@@ -42,10 +42,13 @@ This card offers a wide range of options to customize its appearance and behavio
 | `target_date` | string | `null` | Countdown target. Can be ISO date string, Home Assistant entity ID, or a template. |
 | `creation_date` | string | `null` | Start date for progress calculation. ISO date, entity ID, or template. |
 | `timer_entity` | string | `null` | Home Assistant `timer` entity. Overrides `target_date`. |
+| `auto_discover_alexa` | boolean | `false` | Automatically discover Alexa timer entities (Alexa-media-player integration). |
+| `auto_discover_google` | boolean | `false` | Automatically discover Google Home timer entities (ha-google-home integration). |
+| `compact_format` | boolean | `false` | Use compact subtitle/unit formatting (auto-enabled when many units shown). |
 | `title` | string | `"Countdown Timer"` | Main title of the card. Supports templates. |
 | `subtitle` | string | `null` | Subtitle for the card. Supports templates. |
-| `expired_text` | string | `"Completed! 🎉"` | Text shown when countdown finishes. |
-| `expired_animation` | boolean | `true` | Enables celebration animation when timer expires. |
+| `expired_text` | string | `"Completed!"` | Text shown when countdown finishes. |
+| `expired_animation` | boolean | `false` | Enables celebration animation when timer expires. |
 | `show_months` | boolean | `true` | Show months unit. |
 | `show_days` | boolean | `true` | Show days unit. |
 | `show_hours` | boolean | `true` | Show hours unit. |
@@ -53,7 +56,7 @@ This card offers a wide range of options to customize its appearance and behavio
 | `show_seconds` | boolean | `true` | Show seconds unit. |
 | `width` / `height` | string | `null` | Fixed card dimensions (e.g., `"200px"`, `"100%"`). |
 | `aspect_ratio` | string | `"2/1"` | Aspect ratio for responsive sizing (e.g., `"1/1"`, `"16/9"`). |
-| `color` | string | `"#FCFCFC"` | Primary text color. Supports templates. |
+| `text_color` | string | `"#FCFCFC"` | Primary text color. Supports templates. |
 | `background_color` | string | `"#000001"` | Card background color. Supports templates. |
 | `progress_color` | string | `"#C366CD"` | Progress bar color. Supports templates. |
 | `icon_size` | string | `"100px"` | Progress circle size. Auto-scales by default. |
