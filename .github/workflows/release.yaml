@@ -29,11 +29,8 @@ jobs:
       run: npm run build
 
     - name: Upload built asset
-      uses: actions/upload-release-asset@v1
+      uses: softprops/action-gh-release@v2
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN || github.token }}
       with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./timeflow-card.js
-        asset_name: timeflow-card.js
-        asset_content_type: application/javascript
+        files: timeflow-card.js
