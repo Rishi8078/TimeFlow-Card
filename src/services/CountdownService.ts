@@ -1,6 +1,7 @@
 import { TemplateService } from './TemplateService';
 import { HomeAssistant, CountdownState, CardConfig } from '../types/index';
 import { TimerEntityService } from './Timer';
+import { LocalizeFunction } from '../utils/localize';
 
 /**
  * CountdownService - Enhanced with Alexa Timer support
@@ -403,19 +404,21 @@ export class CountdownService {
    * Gets the subtitle text showing time breakdown (enhanced for Alexa and Google Home)
    * @param {Object} config - Card configuration
    * @param {Object} hass - Home Assistant object
+   * @param {LocalizeFunction} localize - Optional localization function
    * @returns {string} - Formatted subtitle text
    */
-  getSubtitle(config: CardConfig, hass: HomeAssistant | null): string {
+  getSubtitle(config: CardConfig, hass: HomeAssistant | null, localize?: LocalizeFunction, useCompact: boolean = true): string {
+    const t = localize || ((key: string) => key);
     // TIMER ENTITY SUPPORT (Handles explicit entity)
     if (config.timer_entity && hass) {
       const timerData = TimerEntityService.getTimerData(config.timer_entity, hass);
       if (timerData) {
         // For smart assistant timers, always use their specific subtitle logic
         if (timerData.isAlexaTimer || timerData.isGoogleTimer) {
-          return TimerEntityService.getTimerSubtitle(timerData, config.show_seconds !== false);
+          return TimerEntityService.getTimerSubtitle(timerData, config.show_seconds !== false, localize, useCompact);
         }
         // For standard HA timers, use the timer subtitle if available
-        return TimerEntityService.getTimerSubtitle(timerData, config.show_seconds !== false);
+        return TimerEntityService.getTimerSubtitle(timerData, config.show_seconds !== false, localize, useCompact);
       }
       return 'Timer not found';
     }
@@ -450,48 +453,44 @@ export class CountdownService {
           if (timerData) {
             this.lastAlexaTimerData = timerData; // Cache for finished fallback
             this.timeRemaining = this._timerDataToCountdownState(timerData);
-            return TimerEntityService.getTimerSubtitle(timerData, config.show_seconds !== false);
+            return TimerEntityService.getTimerSubtitle(timerData, config.show_seconds !== false, localize, useCompact);
           }
         }
 
         // Case 2: No active timer, but we have a cached one that just finished
         if (this.lastAlexaTimerData && TimerEntityService.isTimerExpired(this.lastAlexaTimerData)) {
-          return TimerEntityService.getTimerSubtitle(this.lastAlexaTimerData, config.show_seconds !== false);
+          return TimerEntityService.getTimerSubtitle(this.lastAlexaTimerData, config.show_seconds !== false, localize, useCompact);
         }
 
         // Case 3: No active timer and no recently finished timer.
         // This means the entity exists but has no running timers. Provide a specific message.
-        const firstDiscovered = TimerEntityService.getTimerData(smartTimers[0], hass);
-        if (firstDiscovered) {
-            // Return the "no timers" state from the specific service (Alexa or Google)
-            return TimerEntityService.getTimerSubtitle(firstDiscovered, config.show_seconds !== false);
-        }
       }
       
       // Case 4: No smart timer entities were discovered at all.
-      return 'No timers found';
+      const t = localize || ((key: string) => key);
+      return t('timer.no_timers');
     }
     
     // --- FALLBACK TO STANDARD COUNTDOWN ---
     if (this.expired) {
-      const { expired_text = 'Completed!' } = config;
+      const { expired_text = t('countdown.completed') } = config;
       return expired_text;
     }
     
     const { months, days, hours, minutes, seconds } = this.timeRemaining || { months: 0, days: 0, hours: 0, minutes: 0, seconds: 0 };
     const { show_months, show_days, show_hours, show_minutes, show_seconds, compact_format } = config;
-    
+
     const parts = [];
-    
-    if (show_months && months > 0) parts.push({ value: months, unit: months === 1 ? 'month' : 'months' });
-    if (show_days && days > 0) parts.push({ value: days, unit: days === 1 ? 'day' : 'days' });
-    if (show_hours && hours > 0) parts.push({ value: hours, unit: hours === 1 ? 'hour' : 'hours' });
-    if (show_minutes && minutes > 0) parts.push({ value: minutes, unit: minutes === 1 ? 'minute' : 'minutes' });
-    if (show_seconds && seconds > 0) parts.push({ value: seconds, unit: seconds === 1 ? 'second' : 'seconds' });
+
+    if (show_months && months > 0) parts.push({ value: months, unit: months === 1 ? t('time.month_full') : t('time.months_full') });
+    if (show_days && days > 0) parts.push({ value: days, unit: days === 1 ? t('time.day_full') : t('time.days_full') });
+    if (show_hours && hours > 0) parts.push({ value: hours, unit: hours === 1 ? t('time.hour_full') : t('time.hours_full') });
+    if (show_minutes && minutes > 0) parts.push({ value: minutes, unit: minutes === 1 ? t('time.minute_full') : t('time.minutes_full') });
+    if (show_seconds && seconds > 0) parts.push({ value: seconds, unit: seconds === 1 ? t('time.second_full') : t('time.seconds_full') });
     
     if (parts.length === 0) {
-      if (show_seconds) return `0 seconds`;
-      return 'Starting...';
+      if (show_seconds) return `0 ${t('time.seconds_full')}`;
+      return t('countdown.starting');
     }
     
     // If only one unit, always show full format
@@ -501,9 +500,9 @@ export class CountdownService {
     // - If compact_format is explicitly true, use compact
     // - If compact_format is explicitly false, use full
     // - If compact_format is undefined (auto), use compact only if 3+ units
-    const useCompact = compact_format === true || (compact_format !== false && parts.length >= 3);
+    const useCompactFormat = compact_format === true || (compact_format !== false && parts.length >= 3);
     
-    if (useCompact) {
+    if (useCompactFormat) {
       const compact = parts.map(p => `${p.value}${p.unit.charAt(0)}`).join(' ');
       return compact;
     }

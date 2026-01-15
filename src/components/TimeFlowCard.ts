@@ -3,10 +3,11 @@ import { LitElement, html, css, TemplateResult, CSSResult } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { TimerEntityService } from '../services/Timer';
 import { DateParser } from '../utils/DateParser';
-import { ConfigValidator, ValidationResult, ValidationError } from '../utils/ConfigValidator';
+import { ConfigValidator, ValidationResult } from '../utils/ConfigValidator';
 import { TemplateService } from '../services/TemplateService';
 import { CountdownService } from '../services/CountdownService';
 import { StyleManager } from '../utils/StyleManager';
+import { setupLocalize, LocalizeFunction } from '../utils/localize';
 import { HomeAssistant, CountdownState, CardConfig, ActionHandlerEvent } from '../types/index';
 import { createActionHandler, createHandleAction } from '../utils/action-handler';
 import '../utils/ErrorDisplay';
@@ -34,6 +35,7 @@ export class TimeFlowCard extends LitElement {
   @state() private _expired: boolean = false;
   @state() private _validationResult: ValidationResult | null = null;
   @state() private _initialized: boolean = false; // Track initialization
+  @state() private _localize: LocalizeFunction | null = null; // Localization function
 
   // Timer ID
   private _timerId: ReturnType<typeof setInterval> | null = null;
@@ -214,7 +216,7 @@ export class TimeFlowCard extends LitElement {
       stroke_width: 15,
       icon_size: 100,
       expired_animation: false,
-      expired_text: 'Completed!',
+      expired_text: '',
     };
   }
 
@@ -304,6 +306,11 @@ export class TimeFlowCard extends LitElement {
 
   updated(changedProperties: Map<string | number | symbol, unknown>): void {
     if (changedProperties.has('hass') || changedProperties.has('config')) {
+      // Initialize/update localization based on Home Assistant language setting
+      if (this.hass) {
+        this._localize = setupLocalize(this.hass);
+      }
+      
       // Clear template caches on hass or config changes
       this.templateService.clearTemplateCache();
       this._updateCountdownAndRender();
@@ -406,11 +413,21 @@ export class TimeFlowCard extends LitElement {
       stroke_width ,
       icon_size ,
       expired_animation = true,
-      expired_text = 'Completed!',
+      expired_text = '',
       width,
       height,
-      aspect_ratio
+      aspect_ratio,
+      show_months,
+      show_days,
+      show_hours,
+      show_minutes,
+      show_seconds,
+      compact_format
     } = this._resolvedConfig;
+
+    // Compute effective compact_format state
+    const enabledUnits = [show_months, show_days, show_hours, show_minutes, show_seconds].filter(v => v === true).length;
+    const useCompact = compact_format === true || (compact_format !== false && enabledUnits >= 3);
 
     // FIXED: Ensure background color has a sensible default
     const cardBackground = background_color || 'var(--ha-card-background, var(--ha-card-background-color, #1a1a1a))';
@@ -442,6 +459,11 @@ export class TimeFlowCard extends LitElement {
       ...dimensionStyles
     ].join('; ');
 
+    // Determine if this is a timer display (timer_entity or auto_discover_*)
+    const isTimerDisplay = this._resolvedConfig.timer_entity || this._resolvedConfig.auto_discover_alexa || this._resolvedConfig.auto_discover_google;
+    // For timers, always use compact format by default (show: 5h30m25s); for countdowns, use the calculated useCompact
+    const timeFormatCompact = isTimerDisplay ? (compact_format !== false) : useCompact;
+
     // Compose subtitle text
     let subtitleText: string;
     if (this._resolvedConfig.timer_entity && this.hass) {
@@ -449,21 +471,31 @@ export class TimeFlowCard extends LitElement {
       if (timerData) {
         // If expired and it's an Alexa or Google timer, show dynamic "timer complete" text (with label when available)
         if (this._expired && (timerData.isAlexaTimer || timerData.isGoogleTimer)) {
-          subtitleText = TimerEntityService.getTimerSubtitle(timerData, this._resolvedConfig.show_seconds !== false);
+          subtitleText = TimerEntityService.getTimerSubtitle(
+            timerData,
+            this._resolvedConfig.show_seconds !== false,
+            this._localize || undefined,
+            timeFormatCompact
+          );
         } else if (!this._expired) {
-          subtitleText = subtitle || TimerEntityService.getTimerSubtitle(timerData, this._resolvedConfig.show_seconds !== false);
+          subtitleText = subtitle || TimerEntityService.getTimerSubtitle(
+            timerData,
+            this._resolvedConfig.show_seconds !== false,
+            this._localize || undefined,
+            timeFormatCompact
+          );
         } else {
-          subtitleText = expired_text;
+          subtitleText = expired_text || this.countdownService.getSubtitle(this._resolvedConfig, this.hass, this._localize || undefined, timeFormatCompact);
         }
       } else {
-        subtitleText = this._expired ? expired_text : (subtitle || this.countdownService.getSubtitle(this._resolvedConfig, this.hass));
+        subtitleText = this._expired ? (expired_text || this.countdownService.getSubtitle(this._resolvedConfig, this.hass, this._localize || undefined, timeFormatCompact)) : (subtitle || this.countdownService.getSubtitle(this._resolvedConfig, this.hass, this._localize || undefined, timeFormatCompact));
       }
     } else {
       // In auto-discovery, always defer to service subtitle (handles Alexa finished/none states)
       if (this._resolvedConfig.auto_discover_alexa) {
-        subtitleText = subtitle || this.countdownService.getSubtitle(this._resolvedConfig, this.hass);
+        subtitleText = subtitle || this.countdownService.getSubtitle(this._resolvedConfig, this.hass, this._localize || undefined, timeFormatCompact);
       } else {
-        subtitleText = this._expired ? expired_text : (subtitle || this.countdownService.getSubtitle(this._resolvedConfig, this.hass));
+        subtitleText = this._expired ? (expired_text || this.countdownService.getSubtitle(this._resolvedConfig, this.hass, this._localize || undefined, timeFormatCompact)) : (subtitle || this.countdownService.getSubtitle(this._resolvedConfig, this.hass, this._localize || undefined, timeFormatCompact));
       }
     }
 

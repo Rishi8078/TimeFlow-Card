@@ -4,6 +4,10 @@ export interface HomeAssistant {
   states: { [entity_id: string]: any };
   callService: (domain: string, service: string, serviceData?: any) => void;
   callApi: (method: string, path: string, data?: any) => Promise<any>;
+  locale: {
+    language: string;
+    [key: string]: any;
+  };
   // Add other HA properties as needed
 }
 

@@ -45,7 +45,7 @@ export class ConfigValidator {
       };
     }
     
-    // Validate target_date (required field, unless using timer_entity or auto_discover_alexa)
+    // Validate target_date (required field, unless using timer_entity, auto_discover_alexa, or auto_discover_google)
     if (config.target_date) {
       if (!this.isValidDateInput(config.target_date)) {
         errors.push({
@@ -56,13 +56,13 @@ export class ConfigValidator {
           value: config.target_date
         });
       }
-    } else if (!config.timer_entity && !config.auto_discover_alexa) {
-      // target_date is only required if timer_entity and auto_discover_alexa are not provided
+    } else if (!config.timer_entity && !config.auto_discover_alexa && !config.auto_discover_google) {
+      // target_date is only required if timer_entity, auto_discover_alexa, and auto_discover_google are not provided
       errors.push({
         field: 'target_date',
-        message: 'Either "target_date", "timer_entity", or "auto_discover_alexa" must be provided',
+        message: 'Either "target_date", "timer_entity", "auto_discover_alexa", or "auto_discover_google" must be provided',
         severity: 'critical',
-        suggestion: 'Add target_date field with a valid date value like "2025-12-31T23:59:59" OR specify a timer_entity like "timer.my_timer" OR enable auto_discover_alexa.',
+        suggestion: 'Add target_date field with a valid date value like "2025-12-31T23:59:59" OR specify a timer_entity like "timer.my_timer" OR enable auto_discover_alexa OR enable auto_discover_google.',
         value: undefined
       });
     }
@@ -73,7 +73,7 @@ export class ConfigValidator {
         field: 'timer_entity',
         message: 'Invalid timer_entity format',
         severity: 'warning',
-        suggestion: 'Use a valid entity ID like "timer.my_timer" or "sensor.alexa_timer".',
+        suggestion: 'Use a valid entity ID like "timer.my_timer", "sensor.alexa_timer", or "sensor.kitchen_display_timers" (Google Home).',
         value: config.timer_entity
       });
     }
@@ -215,8 +215,8 @@ export class ConfigValidator {
       if (error.severity === 'critical' || error.severity === 'warning') {
         switch (error.field) {
           case 'target_date':
-            if (!safeConfig.target_date && !safeConfig.timer_entity) {
-              // Only set a default target_date if no timer_entity is provided
+            if (!safeConfig.target_date && !safeConfig.timer_entity && !safeConfig.auto_discover_alexa && !safeConfig.auto_discover_google) {
+              // Only set a default target_date if no timer_entity or auto-discovery is provided
               const tomorrow = new Date();
               tomorrow.setDate(tomorrow.getDate() + 1);
               safeConfig.target_date = tomorrow.toISOString();

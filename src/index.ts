@@ -46,9 +46,6 @@ if (!customElements.get('timeflow-card-editor')) {
   // Component already registered
 }
 
-// Editor registration hint for Lovelace (the editor element itself is registered in its file)
-window.customCards = window.customCards || [];
-
 // Register the card with Home Assistant
 window.customCards = window.customCards || [];
 window.customCards.push({
@@ -60,4 +57,4 @@ window.customCards.push({
 });
 
 // Export main classes for external use or testing
-export { TimeFlowCard, ProgressCircle, ErrorDisplay };
+export { TimeFlowCard, ProgressCircle, ErrorDisplay, TimeFlowCardEditor };
