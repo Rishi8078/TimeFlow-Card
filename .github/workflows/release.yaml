@@ -4,6 +4,10 @@ on:
   release:
     types: [published]
 
+# Grant the workflow permission to write repository contents (needed to upload release assets)
+permissions:
+  contents: write
+
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
