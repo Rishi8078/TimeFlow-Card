@@ -25,6 +25,40 @@ export class CountdownService {
   }
 
   /**
+   * Calculates precise calendar months between now and target date
+   * Returns the number of full calendar months and remaining milliseconds
+   * @param {Date} nowDate - Current date
+   * @param {Date} targetDate - Target date
+   * @returns {{ months: number, remainingMs: number }} - Calendar months and remaining time
+   */
+  private _calculateCalendarMonths(nowDate: Date, targetDate: Date): { months: number; remainingMs: number } {
+    // Handle expired case
+    if (targetDate <= nowDate) {
+      return { months: 0, remainingMs: 0 };
+    }
+
+    // Count full calendar months by iterating
+    let months = 0;
+    const tempDate = new Date(nowDate);
+
+    while (true) {
+      const nextMonth = new Date(tempDate);
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      if (nextMonth <= targetDate) {
+        months++;
+        tempDate.setMonth(tempDate.getMonth() + 1);
+      } else {
+        break;
+      }
+    }
+
+    // Calculate remaining milliseconds after full months
+    const remainingMs = targetDate.getTime() - tempDate.getTime();
+
+    return { months, remainingMs };
+  }
+
+  /**
    * Updates the countdown based on current configuration (enhanced for Alexa)
    * @param {Object} config - Card configuration
    * @param {Object} hass - Home Assistant object
@@ -122,23 +156,30 @@ export class CountdownService {
         // Calculate time units based on what's enabled - cascade disabled units into enabled ones
         const { show_months, show_days, show_hours, show_minutes, show_seconds } = config;
         
-        let totalMilliseconds = difference;
         let months = 0, days = 0, hours = 0, minutes = 0, seconds = 0;
+        let totalMilliseconds = difference;
         
-        // Find the largest enabled unit and calculate everything from there
+        // Use calendar-based month calculation for precise results
         if (show_months) {
-          months = Math.floor(totalMilliseconds / (1000 * 60 * 60 * 24 * 30.44)); // Average month length
-          totalMilliseconds %= (1000 * 60 * 60 * 24 * 30.44);
+          const nowDate = new Date(now);
+          const targetDateObj = new Date(targetDate);
+          const calendarResult = this._calculateCalendarMonths(nowDate, targetDateObj);
+          months = calendarResult.months;
+          totalMilliseconds = calendarResult.remainingMs;
         }
         
         if (show_days) {
           days = Math.floor(totalMilliseconds / (1000 * 60 * 60 * 24));
           totalMilliseconds %= (1000 * 60 * 60 * 24);
         } else if (show_months && !show_days) {
-          // If days are disabled but months are enabled, add days to months
-          const extraDays = Math.floor(totalMilliseconds / (1000 * 60 * 60 * 24));
-          months += Math.floor(extraDays / 30.44);
-          totalMilliseconds %= (1000 * 60 * 60 * 24);
+          // If days are disabled but months are enabled, convert remaining days to additional months
+          // Use calendar logic: count how many more full months fit in the remaining time
+          const nowDate = new Date(now);
+          nowDate.setMonth(nowDate.getMonth() + months);
+          const targetDateObj = new Date(targetDate);
+          const additionalResult = this._calculateCalendarMonths(nowDate, targetDateObj);
+          months += additionalResult.months;
+          totalMilliseconds = additionalResult.remainingMs;
         }
         
         if (show_hours) {
@@ -149,9 +190,8 @@ export class CountdownService {
           const extraHours = Math.floor(totalMilliseconds / (1000 * 60 * 60));
           if (show_days) {
             days += Math.floor(extraHours / 24);
-          } else if (show_months) {
-            months += Math.floor(extraHours / (24 * 30.44));
           }
+          // Note: We don't add hours to months anymore since calendar months are precise
           totalMilliseconds %= (1000 * 60 * 60);
         }
         
@@ -165,8 +205,6 @@ export class CountdownService {
             hours += Math.floor(extraMinutes / 60);
           } else if (show_days) {
             days += Math.floor(extraMinutes / (60 * 24));
-          } else if (show_months) {
-            months += Math.floor(extraMinutes / (60 * 24 * 30.44));
           }
           totalMilliseconds %= (1000 * 60);
         }
@@ -182,8 +220,6 @@ export class CountdownService {
             hours += Math.floor(extraSeconds / (60 * 60));
           } else if (show_days) {
             days += Math.floor(extraSeconds / (60 * 60 * 24));
-          } else if (show_months) {
-            months += Math.floor(extraSeconds / (60 * 60 * 24 * 30.44));
           }
         }
 

@@ -3,7 +3,7 @@ import { LitElement, html, css, TemplateResult, CSSResult } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { TimerEntityService } from '../services/Timer';
 import { DateParser } from '../utils/DateParser';
-import { ConfigValidator, ValidationResult } from '../utils/ConfigValidator';
+import { ConfigValidator, ValidationResult, ValidationError } from '../utils/ConfigValidator';
 import { TemplateService } from '../services/TemplateService';
 import { CountdownService } from '../services/CountdownService';
 import { StyleManager } from '../utils/StyleManager';

@@ -1,6 +1,5 @@
 /**
  * Action Handling Code for Home Assistant
- * Consolidated from frontend and custom-card-helpers
  */
 
 import { HomeAssistant, ActionConfig } from '../types/index';

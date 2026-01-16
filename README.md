@@ -4,7 +4,7 @@
 
 A beautiful, highly customizable countdown timer card for Home Assistant. Track your next trip, a loved one’s birthday, or an important deadline and always know exactly how much time is left. Now with built-in support for timers and Jinja2 templates.
 
-[![Home Assistant][ha_badge]][ha_link] [![HACS][hacs_badge]][hacs_link] [![GitHub Release][release_badge]][release] [![Buy Me A Coffee][bmac_badge]][bmac]
+[![Home Assistant][ha_badge]][ha_link] [![HACS][hacs_badge]][hacs_link] [![GitHub Release][release_badge]][release] [![Buy Me A Coffee][bmac_badge]][bmac] ![downloads]
 
 
 ## Table of contents
@@ -739,4 +739,4 @@ If you find this card useful, please consider supporting its development. Your c
 [bmac]: https://coff.ee/rishi8078
 [Stars]:https://img.shields.io/github/stars/Rishi8078/TimeFlow-Card
 [Last commit]:https://img.shields.io/github/last-commit/Rishi8078/TimeFlow-Card
-
+[downloads]:https://img.shields.io/github/downloads/Rishi8078/TimeFlow-Card/total?style=flat-square
