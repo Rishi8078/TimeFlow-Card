@@ -5,11 +5,75 @@ All notable changes to TimeFlow Card will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0/).
 
+## [3.1.2] - 2026-01-17
+
+This release fixes critical countdown calculation issues that were causing inaccurate time displays.
+
+### Fixed
+
+- **Precise Month Calculations**: Replaced 30.44-day month averaging with calendar-based month counting for accurate countdowns
+- **Calendar Month Logic**: Implemented iterative calendar month calculation that accounts for varying month lengths (28-31 days)
+- **Timezone Bug Fix**: Fixed visual editor timezone conversion that was shifting times when saving dates
+- **DST-Aware Calculations**: Month calculations now properly handle daylight saving time transitions
+
+### Changed
+
+- **Countdown Accuracy**: All countdown displays now show precise, intuitive time remaining
+- **Month Calculation Method**: Uses actual calendar months instead of fixed averages for better user experience
+
+### Notes
+
+- **Breaking Changes**: None
+- **Performance**: Improved calculation accuracy without performance impact
+- **Compatibility**: Fixes apply to all existing countdown configurations
+
+## [3.1.1] - 2026-01-14
+
+This release brings theme integration and localization support to enhance the user experience.
+
+### Features
+
+- **Home Assistant Theme Integration**: Added support for Home Assistant themes for card styling
+- **Localization Support**: Added localized strings for countdown states (starting/completed) across supported languages (EN, FR, DE, ES, IT, NL)
+- **Localized Time Units**: Full and compact time unit labels now render correctly in the user's language
+- **Service-Level Localization**: Timer subtitles (Alexa, Google Home, standard HA timers) now use localization for translated status messages
+
+### Changed
+
+- **Theme-Aware Styling**: Card now respects Home Assistant theme colors and styling
+- **Internationalization**: All user-facing text now supports multiple languages
+
+### Notes
+
+- **Breaking Changes**: None
+- **Browser Cache**: Clear browser cache after updating to ensure new translations load correctly
+
+## [3.1.0] - 2026-01-10
+
+This major release introduces the visual editor and enhanced smart assistant support.
+
+### Features
+
+- **Visual Editor**: Complete UI-based configuration - no more manual YAML editing required
+- **Google Nest Support**: Full support for Google timers (active, paused, and finished states)
+- **Amazon Alexa Support**: Full support for Alexa timers (active, paused, and finished states)
+- **Auto-Discovery**: Seamlessly fetch and display active timers from Alexa and Google on the same card
+
+### Changed
+
+- **Configuration Method**: Visual editor now available as primary configuration method
+- **Smart Timer Integration**: Enhanced support for multiple smart assistant platforms
+
+### Notes
+
+- **Breaking Changes**: None
+- **Browser Cache**: Clear browser cache after updating to see the new editor
+
 ## [3.0.4] - 2025-09-07
 
-This release focuses on Visual editor 
+This release focuses on Visual editor
 
-### Breaking change 
+### Breaking change
 changed the attribute color to text color to avoid confusion 
 
 
@@ -108,6 +172,61 @@ This was a major update focusing on a complete architectural overhaul for signif
 -   **Flickering Eliminated**: Resolved FOUC and card-mod flickering issues.
 -   **Style Consistency**: Removed redundant style applications.
 -   **Accessibility**: Improved ARIA attributes and keyboard navigation.
+
+## [2.0.2] - 2025-07-23
+
+This release introduces toggleable celebration animations and enhanced timezone support.
+
+### 🚀 Features
+
+- **Toggleable Celebration Animation**: Control whether the card shows a celebration animation when countdown expires
+- **Enhanced Timezone Support**: Smart entity handling that automatically treats entity timestamps as local time
+
+### 🔧 Fixed
+
+- **Timezone Detection**: Preserves timezone info in ISO strings when provided directly
+- **Cross-Platform Consistency**: Uniform date parsing across all browsers and devices
+
+### 📝 Changed
+
+- **Entity Values**: Automatically strips timezone info to treat as local time for intuitive behavior
+- **ISO Dates**: Preserves timezone information when present in direct date strings
+
+## [2.0.1] - 2025-07-23
+
+This release fixes timezone parsing issues with Home Assistant's isoformat() dates.
+
+### 🔧 Fixed
+
+- **Timezone Parsing**: Fixed handling of ISO dates with timezone information from Home Assistant's `device_class: timestamp` entities
+- **Jinja2 Compatibility**: Now properly handles dates from `isoformat()` function
+- **Smart Detection**: Uses regex pattern to detect timezone info and preserve it appropriately
+
+### 📝 Changed
+
+- **Template Support**: Home Assistant templates using `{{ now().isoformat() }}` now work directly
+- **Backward Compatibility**: Maintained support for timezone-less formats
+
+## [2.0.0] - 2025-07-22
+
+This major release introduces complete Home Assistant template support, transforming the card from static to fully dynamic.
+
+### 🚀 Features
+
+- **Complete Template Support**: Full Jinja2 template evaluation for all card properties
+- **Template-Enabled Properties**: All card properties now support HA templates (`title`, `subtitle`, `target_date`, `color`, etc.)
+- **Smart Fallbacks**: Automatic extraction from template expressions with fallback handling
+- **Performance Optimized**: Template result caching (5-second cache) for optimal performance
+
+### 📝 Changed
+
+- **Dynamic Behavior**: Card now adapts to Home Assistant state in real-time
+- **Configuration Flexibility**: Templates can be used anywhere for dynamic content
+
+### 🔧 Notes
+
+- **100% Backward Compatible**: Existing configurations work unchanged
+- **No Breaking Changes**: Progressive enhancement - templates are completely optional
 
 ---
 
