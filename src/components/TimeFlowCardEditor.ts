@@ -165,6 +165,8 @@ export class TimeFlowCardEditor extends LitElement {
             // Display
             'title': 'Card title - supports templates: "{{ states(\'sensor.event_name\') }}"',
             'subtitle': 'Shows time remaining by default; only set for custom text',
+            'subtitle_prefix': 'Text before countdown (e.g., "in", "Only")',
+            'subtitle_suffix': 'Text after countdown (e.g., "left", "remaining")',
             'expired_text': 'Text shown when countdown completes',
             'compact_format': '"2d 5h 30m" vs "2 days 5 hours 30 minutes"',
 
@@ -204,6 +206,8 @@ export class TimeFlowCardEditor extends LitElement {
             'show_seconds': 'Seconds',
             'show_months': 'Months',
             'compact_format': 'Compact Format',
+            'subtitle_prefix': 'Subtitle Prefix',
+            'subtitle_suffix': 'Subtitle Suffix',
             'expired_animation': 'Expired Animation',
             'expired_text': 'Expired Text',
             'progress_color': 'Progress Color',
@@ -330,6 +334,13 @@ export class TimeFlowCardEditor extends LitElement {
             // ═══════════════════════════════════════════════════════════
             { name: 'title', selector: { text: {} } },
             { name: 'subtitle', selector: { text: {} } },
+            {
+                type: 'grid',
+                schema: [
+                    { name: 'subtitle_prefix', selector: { text: {} } },
+                    { name: 'subtitle_suffix', selector: { text: {} } },
+                ]
+            },
             { name: 'expired_text', selector: { text: {} } },
 
             // ═══════════════════════════════════════════════════════════
