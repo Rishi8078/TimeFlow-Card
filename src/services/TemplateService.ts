@@ -1,97 +1,221 @@
-import { HomeAssistant, TimeFlowCard } from '../types/index';
-
-interface CacheEntry {
-  result: any;
-  timestamp: number;
-}
+import { HomeAssistant, TimeFlowCard, RenderTemplateResult, subscribeRenderTemplate, UnsubscribeFunc } from '../types/index';
 
 /**
- * TemplateService - Handles Home Assistant template evaluation and caching
- * Provides efficient template processing with intelligent caching
+ * CacheManager - Simple cache with time-based expiration
+ * Used to persist template results across disconnect/reconnect
+ */
+class CacheManager<T> {
+  private _expiration?: number;
+  private _cache = new Map<string, T>();
+
+  constructor(expiration?: number) {
+    this._expiration = expiration;
+  }
+
+  public get(key: string): T | undefined {
+    return this._cache.get(key);
+  }
+
+  public set(key: string, value: T): void {
+    this._cache.set(key, value);
+    if (this._expiration) {
+      window.setTimeout(() => this._cache.delete(key), this._expiration);
+    }
+  }
+
+  public has(key: string): boolean {
+    return this._cache.has(key);
+  }
+
+  public delete(key: string): boolean {
+    return this._cache.delete(key);
+  }
+
+  public clear(): void {
+    this._cache.clear();
+  }
+}
+
+// Global cache for template results - persists across card reconnects (1 minute expiration)
+const templateCache = new CacheManager<RenderTemplateResult>(60000);
+
+/**
+ * TemplateService - Handles Home Assistant template evaluation using WebSocket subscriptions
+ * 
+ * KEY CHANGES from HTTP API approach:
+ * - Uses WebSocket subscriptions (subscribeRenderTemplate) instead of HTTP POST
+ * - Real-time updates when template dependencies change
+ * - Significantly fewer API calls (only one subscription per unique template)
+ * - No polling needed - HA pushes updates automatically
  */
 export class TemplateService {
-  private templateResults: Map<string, CacheEntry>;
-  private templateCacheLimit: number;
+  // Map of template string -> subscription unsubscribe function
+  private _unsubRenderTemplates: Map<string, Promise<UnsubscribeFunc>> = new Map();
+
+  // Map of template string -> current result
+  private _templateResults: Map<string, RenderTemplateResult> = new Map();
+
+  // Reference to the card component
   public card?: TimeFlowCard;
 
-  constructor() {
-    this.templateResults = new Map();
-    this.templateCacheLimit = 100;
+  // Flag to track connection state
+  private _connected: boolean = false;
+
+  constructor() { }
+
+  /**
+   * Connect to template subscriptions - call this in connectedCallback
+   */
+  connect(): void {
+    this._connected = true;
+    // Restore any cached results
+    this._templateResults.forEach((_, template) => {
+      if (templateCache.has(template)) {
+        this._templateResults.set(template, templateCache.get(template)!);
+      }
+    });
   }
 
   /**
-   * Evaluates a Home Assistant template using the correct API
-   * @param {string} template - Template string to evaluate
-   * @param {Object} hass - Home Assistant object
-   * @returns {Promise<*>} - Evaluated template result
+   * Disconnect from all template subscriptions - call this in disconnectedCallback
+   * Saves current results to cache for quick restore on reconnect
    */
-  async evaluateTemplate(template: string, hass: HomeAssistant | null): Promise<any> {
-    if (!hass || !template) {
-      return template;
+  async disconnect(): Promise<void> {
+    this._connected = false;
+
+    // Save current results to cache before disconnecting
+    this._templateResults.forEach((result, template) => {
+      templateCache.set(template, result);
+    });
+
+    // Unsubscribe from all templates
+    for (const [template, unsubPromise] of this._unsubRenderTemplates.entries()) {
+      try {
+        const unsub = await unsubPromise;
+        unsub();
+      } catch (err: any) {
+        // Connection might already be closed, ignore these errors
+        if (err.code !== 'not_found' && err.code !== 'template_error') {
+          console.warn('[TimeFlow] Error unsubscribing from template:', err);
+        }
+      }
+    }
+    this._unsubRenderTemplates.clear();
+  }
+
+  /**
+   * Subscribe to a template and get real-time updates
+   * Uses WebSocket subscription - much more efficient than HTTP polling
+   */
+  private async _subscribeToTemplate(template: string): Promise<void> {
+    const hass = this.card?.hass;
+
+    if (!hass || !hass.connection || !this._connected) {
+      return;
     }
 
-    // Check cache first
-    const cacheKey = template;
-    if (this.templateResults.has(cacheKey)) {
-      const cached = this.templateResults.get(cacheKey);
-      // Check if cache is still valid (within 5 seconds)
-      if (cached && Date.now() - cached.timestamp < 5000) {
-        return cached.result;
-      }
+    // Already subscribed to this template
+    if (this._unsubRenderTemplates.has(template)) {
+      return;
+    }
+
+    // Check cache first for immediate display
+    if (templateCache.has(template)) {
+      this._templateResults.set(template, templateCache.get(template)!);
     }
 
     try {
-      // Validate template format before making API call
-      if (!this.isValidTemplate(template)) {
-        throw new Error('Invalid template format');
-      }
-
-      // Use callApi method like card-tools and button-card for HA templates
-      const result = await hass.callApi('POST', 'template', { 
-        template: template 
-      });
-      
-      // Check if the template evaluation succeeded but returned 'unknown'
-      if (result === 'unknown' || result === 'unavailable' || result === '' || result === null) {
-        // Try to extract fallback from the template itself
-        const fallback = this.extractFallbackFromTemplate(template);
-        if (fallback && fallback !== template) {
-          // Cache the fallback result
-          this.templateResults.set(cacheKey, {
-            result: fallback,
-            timestamp: Date.now()
-          });
-          
-          // Enforce cache size limits
-          this.enforceTemplateCacheLimit();
-          
-          return fallback;
+      const sub = subscribeRenderTemplate(
+        hass.connection,
+        (result: RenderTemplateResult) => {
+          // Store the result and trigger card update
+          this._templateResults.set(template, result);
+          // Also update the cache for persistence
+          templateCache.set(template, result);
+          // Request card update to reflect new value
+          if (this.card && (this.card as any).requestUpdate) {
+            (this.card as any).requestUpdate();
+          }
+        },
+        {
+          template: template,
+          variables: {
+            user: hass.user?.name ?? 'User',
+          },
+          strict: true, // Fail on invalid templates
         }
-      }
-      
-      // Cache the result
-      this.templateResults.set(cacheKey, {
-        result: result,
-        timestamp: Date.now()
-      });
-      
-      // Enforce cache size limits
-      this.enforceTemplateCacheLimit();
-      
-      return result;
-    } catch (error: any) {
-      // Template evaluation failed, use fallback
+      );
+
+      this._unsubRenderTemplates.set(template, sub);
+      await sub;
+    } catch (err: any) {
+      // Template subscription failed - use fallback value
       const fallback = this.extractFallbackFromTemplate(template);
-      
-      // Cache the fallback to prevent repeated failed calls
-      this.templateResults.set(cacheKey, {
+      this._templateResults.set(template, {
         result: fallback,
-        timestamp: Date.now()
+        listeners: {
+          all: false,
+          domains: [],
+          entities: [],
+          time: false,
+        },
       });
-      
-      this.enforceTemplateCacheLimit();
-      return fallback;
+      // Remove the failed subscription attempt
+      this._unsubRenderTemplates.delete(template);
     }
+  }
+
+  /**
+   * Unsubscribe from a specific template
+   */
+  async unsubscribeFromTemplate(template: string): Promise<void> {
+    const unsubPromise = this._unsubRenderTemplates.get(template);
+    if (!unsubPromise) return;
+
+    try {
+      const unsub = await unsubPromise;
+      unsub();
+      this._unsubRenderTemplates.delete(template);
+      this._templateResults.delete(template);
+    } catch (err: any) {
+      if (err.code !== 'not_found' && err.code !== 'template_error') {
+        console.warn('[TimeFlow] Error unsubscribing from template:', err);
+      }
+    }
+  }
+
+  /**
+   * Evaluates a Home Assistant template using WebSocket subscription
+   * Returns cached value immediately if available, subscribes for updates
+   * 
+   * @param {string} template - Template string to evaluate
+   * @param {Object} hass - Home Assistant object (not used directly but kept for API compatibility)
+   * @returns {Promise<*>} - Evaluated template result
+   */
+  async evaluateTemplate(template: string, hass: HomeAssistant | null): Promise<any> {
+    if (!template) {
+      return template;
+    }
+
+    // Ensure we're subscribed to this template
+    if (this._connected && this.card?.hass?.connection) {
+      await this._subscribeToTemplate(template);
+    }
+
+    // Return cached result if available
+    if (this._templateResults.has(template)) {
+      return this._templateResults.get(template)!.result;
+    }
+
+    // Check global cache
+    if (templateCache.has(template)) {
+      const cached = templateCache.get(template)!;
+      this._templateResults.set(template, cached);
+      return cached.result;
+    }
+
+    // No cached result yet, return fallback
+    return this.extractFallbackFromTemplate(template);
   }
 
   /**
@@ -107,11 +231,11 @@ export class TemplateService {
     try {
       // Remove the outer {{ }} to work with the inner expression
       const innerTemplate = template.replace(/^\{\{\s*/, '').replace(/\s*\}\}$/, '').trim();
-      
+
       // Look for patterns like "states('entity') or 'fallback'"
       const simpleOrPattern = /^(.+?)\s+or\s+['"`]([^'"`]+)['"`]$/;
       const simpleOrMatch = innerTemplate.match(simpleOrPattern);
-      
+
       if (simpleOrMatch && simpleOrMatch[2]) {
         return simpleOrMatch[2];
       }
@@ -119,7 +243,7 @@ export class TemplateService {
       // Look for chained or patterns like "states('entity1') or states('entity2') or 'fallback'"
       const chainedOrPattern = /^(.+?)\s+or\s+(.+?)\s+or\s+['"`]([^'"`]+)['"`]$/;
       const chainedMatch = innerTemplate.match(chainedOrPattern);
-      
+
       if (chainedMatch && chainedMatch[3]) {
         return chainedMatch[3];
       }
@@ -127,7 +251,7 @@ export class TemplateService {
       // Look for conditional patterns like "'value' if condition else 'fallback'"
       const conditionalPattern = /^['"`]([^'"`]+)['"`]\s+if\s+(.+?)\s+else\s+['"`]([^'"`]+)['"`]$/;
       const conditionalMatch = innerTemplate.match(conditionalPattern);
-      
+
       if (conditionalMatch && conditionalMatch[3]) {
         return conditionalMatch[3];
       }
@@ -135,7 +259,7 @@ export class TemplateService {
       // Look for reverse conditional patterns like "condition if test else 'fallback'"
       const reverseConditionalPattern = /^(.+?)\s+if\s+(.+?)\s+else\s+['"`]([^'"`]+)['"`]$/;
       const reverseMatch = innerTemplate.match(reverseConditionalPattern);
-      
+
       if (reverseMatch && reverseMatch[3]) {
         return reverseMatch[3];
       }
@@ -153,9 +277,9 @@ export class TemplateService {
    * @returns {boolean} - Whether the value is a template
    */
   isTemplate(value: any): boolean {
-    return typeof value === 'string' && 
-           value.includes('{{') && 
-           value.includes('}}');
+    return typeof value === 'string' &&
+      value.includes('{{') &&
+      value.includes('}}');
   }
 
   /**
@@ -165,19 +289,19 @@ export class TemplateService {
    */
   isValidTemplate(template: string): boolean {
     if (!template || typeof template !== 'string') return false;
-    
+
     // Check for basic template format
     if (!template.includes('{{') || !template.includes('}}')) return false;
-    
+
     // Check for balanced braces
     const openBraces = (template.match(/\{\{/g) || []).length;
     const closeBraces = (template.match(/\}\}/g) || []).length;
     if (openBraces !== closeBraces) return false;
-    
+
     // Check for empty template
     const content = template.replace(/\{\{\s*/, '').replace(/\s*\}\}/, '').trim();
     if (!content) return false;
-    
+
     return true;
   }
 
@@ -209,29 +333,15 @@ export class TemplateService {
   }
 
   /**
-   * Clears template cache when entities change
+   * Clears template subscriptions and results
+   * Note: With WebSocket subscriptions, this is less commonly needed
+   * as the subscriptions auto-update when dependencies change
    */
-  clearTemplateCache() {
-    this.templateResults.clear();
-  }
-
-  /**
-   * Enforces template cache size limits to prevent memory growth
-   */
-  enforceTemplateCacheLimit() {
-    if (this.templateResults.size <= this.templateCacheLimit) {
-      return;
-    }
-
-    // Convert to array and sort by timestamp (oldest first)
-    const cacheEntries = Array.from(this.templateResults.entries())
-      .sort((a, b) => a[1].timestamp - b[1].timestamp);
-
-    // Remove oldest entries until we're under the limit
-    const entriesToRemove = cacheEntries.length - this.templateCacheLimit;
-    for (let i = 0; i < entriesToRemove; i++) {
-      this.templateResults.delete(cacheEntries[i][0]);
-    }
+  clearTemplateCache(): void {
+    // Disconnect from all subscriptions
+    this.disconnect();
+    // Clear local results
+    this._templateResults.clear();
   }
 
   /**
@@ -241,14 +351,14 @@ export class TemplateService {
    */
   hasTemplatesInConfig(config: any): boolean {
     if (!config) return false;
-    
+
     // Check common template-enabled properties
     const templateProperties = [
       'target_date', 'creation_date', 'title', 'subtitle',
       'color', 'background_color', 'progress_color', 'primary_color', 'secondary_color'
     ];
-    
-    return templateProperties.some(prop => 
+
+    return templateProperties.some(prop =>
       config[prop] && this.isTemplate(config[prop])
     );
   }

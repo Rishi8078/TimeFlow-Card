@@ -100,7 +100,7 @@ show_hours: true
 show_minutes: true
 show_seconds: false
 background_color: "#075056"
-color: "#E4EEF0"
+text_color: "#E4EEF0"
 progress_color: "#FF5B04"
 expired_animation: false
 expired_text: Enjoy Your Day!
@@ -142,7 +142,7 @@ show_seconds: true
 aspect_ratio: 1/1
 height: 180
 icon_size: 60
-color: "#424244"
+text_color: "#424244"
 background_color: "#FAFEFE"
 progress_color: "#FB4E5B"
 stroke_width: 6
@@ -170,7 +170,7 @@ card_mod:
 ![grid](assets/birthday.png)
 
 
-A fully automated birthday countdown. It calculates the person's upcoming age and even changes its color scheme based on the birth month. Simply fill in the name and birthdate in the designated `title`, `target_date`, and `color` sections to personalize it for anyone.
+A fully automated birthday countdown. It calculates the person's upcoming age and even changes its color scheme based on the birth month. Simply fill in the name and birthdate in the designated `title`, `target_date`, and `text_color` sections to personalize it for anyone.
 
 <details>
 <summary>View YAML</summary>
@@ -189,7 +189,7 @@ A fully automated birthday countdown. It calculates the person's upcoming age an
     {% set birthday_month = 10 %}
     {% set birthday_day = 31 %}
     ```
-3.  **In the `color` section** - change these 2 variables:
+3.  **In the `text_color` section** - change these 2 variables:
     ```yaml
     {% set birthday_month = 10 %}
     {% set birthday_day = 31 %}
@@ -241,7 +241,7 @@ show_hours: true
 show_minutes: true
 show_seconds: false
 
-color: >-
+text_color: >-
   {% set birthday_month = 10 %}
   {% set birthday_day = 31 %}
   {% set current_date = now() %}
@@ -378,10 +378,9 @@ show_days: true
 show_hours: true
 show_minutes: false
 show_seconds: false
-color: "#E3943B"
+text_color: "#E3943B"
 background_color: "#2B362E"
 progress_color: "#E3943B"
-show_progress_text: true
 icon_size: 150
 height: 280px
 stroke_width: 10
@@ -418,7 +417,7 @@ cards:
     title: Going Home
     target_date: "2025-09-12T13:43:50"
     background_color: "#1F033A"
-    color: "#E1C5FC"
+    text_color: "#E1C5FC"
     progress_color: "#9C3DF5"
     show_seconds: false
     show_minutes: false
@@ -445,7 +444,7 @@ cards:
     title: Next backup
     target_date: sensor.backup_next_scheduled_automatic_backup
     background_color: "#313630"
-    color: "#DFE2DF"
+    text_color: "#DFE2DF"
     progress_color: "#768273"
     show_seconds: false
     show_minutes: false
@@ -656,7 +655,7 @@ Templates can be used in the following properties for dynamic content:
   - `subtitle`
   - `target_date`
   - `creation_date`
-  - `color`
+  - `text_color`
   - `background_color`
   - `progress_color`
   - `expired_text`
@@ -680,7 +679,7 @@ creation_date: "{{ states('input_datetime.last_hvac_filter_change') }}"
 target_date: >-
   {{ (as_datetime(states('input_datetime.last_hvac_filter_change')) +
   timedelta(days=90)).isoformat() }}
-color: "#FFFFFF"
+text_color: "#FFFFFF"
 progress_color: >-
   {% set filter_timestamp =
   as_timestamp(states('input_datetime.last_hvac_filter_change')) %} {% set

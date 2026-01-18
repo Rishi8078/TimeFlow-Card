@@ -10,7 +10,7 @@ import { CardConfig } from '../types/index';
 export class TimeFlowCardEditor extends LitElement {
     @property({ type: Object }) hass: any = null;
     @state() private _config: CardConfig = { type: 'custom:timeflow-card' } as CardConfig;
-    
+
     // Track which date fields are in "template mode"
     @state() private _targetDateTemplateMode: boolean = false;
     @state() private _creationDateTemplateMode: boolean = false;
@@ -99,18 +99,18 @@ export class TimeFlowCardEditor extends LitElement {
 
     setConfig(config: CardConfig) {
         this._config = { ...config } as CardConfig;
-        
+
         // Auto-detect if existing values are templates
         const targetDate = config.target_date || '';
         const creationDate = config.creation_date || '';
         this._targetDateTemplateMode = this._isTemplate(targetDate);
         this._creationDateTemplateMode = this._isTemplate(creationDate);
     }
-    
+
     private _isTemplate(value: string): boolean {
         return value.includes('{{') || value.includes('{%');
     }
-    
+
     private _convertToDatetimeLocal(isoDate: string): string {
         if (!isoDate || this._isTemplate(isoDate)) return '';
         // Convert ISO format to datetime-local format (YYYY-MM-DDTHH:MM)
@@ -128,7 +128,7 @@ export class TimeFlowCardEditor extends LitElement {
             return '';
         }
     }
-    
+
     private _convertFromDatetimeLocal(localDate: string): string {
         if (!localDate) return '';
         // Convert datetime-local to ISO format with seconds
@@ -161,23 +161,23 @@ export class TimeFlowCardEditor extends LitElement {
             'auto_discover_google': 'Automatically find active Google Home timers',
             'alexa_device_filter': 'Comma-separated list of Alexa device names or IDs to filter timers (e.g., "Kitchen, Living Room")',
             'prefer_labeled_timers': 'Prefer timers with labels over unnamed ones',
-            
+
             // Display
             'title': 'Card title - supports templates: "{{ states(\'sensor.event_name\') }}"',
             'subtitle': 'Shows time remaining by default; only set for custom text',
             'expired_text': 'Text shown when countdown completes',
             'compact_format': '"2d 5h 30m" vs "2 days 5 hours 30 minutes"',
-            
+
             // Colors
             'progress_color': 'Progress circle color (hex, name, rgb, or template)',
             'background_color': 'Card background color',
             'text_color': 'Text color for title and countdown',
-            
+
             // Layout
             'width': 'Card width (e.g., "300px", "100%", "20em")',
             'height': 'Card height (e.g., "200px", "auto")',
             'aspect_ratio': 'Width:height ratio (e.g., "16/9", "4/3", "1/1")',
-            
+
             // Progress Circle
             'stroke_width': 'Thickness of the progress circle ring',
             'icon_size': 'Size of the progress circle',
@@ -223,7 +223,7 @@ export class TimeFlowCardEditor extends LitElement {
             .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
             .join(' ');
     }
-    
+
     private _renderDateField(
         configKey: 'target_date' | 'creation_date',
         label: string,
@@ -232,7 +232,7 @@ export class TimeFlowCardEditor extends LitElement {
         toggleCallback: () => void
     ): TemplateResult {
         const value = this._config[configKey] || '';
-        
+
         return html`
             <div class="date-field-container">
                 <div class="date-field-header">
@@ -247,8 +247,8 @@ export class TimeFlowCardEditor extends LitElement {
                     </button>
                 </div>
                 
-                ${templateMode 
-                    ? html`
+                ${templateMode
+                ? html`
                         <ha-textfield
                             .value=${value}
                             .placeholder=${'{{ states(\'input_datetime.my_date\') }}'}
@@ -256,7 +256,7 @@ export class TimeFlowCardEditor extends LitElement {
                         ></ha-textfield>
                         <div class="date-helper">Enter Jinja template, entity, or ISO date string</div>
                     `
-                    : html`
+                : html`
                         <input 
                             type="datetime-local"
                             .value=${this._convertToDatetimeLocal(value)}
@@ -264,21 +264,21 @@ export class TimeFlowCardEditor extends LitElement {
                         />
                         <div class="date-helper">${helper}</div>
                     `
-                }
+            }
             </div>
         `;
     }
-    
+
     private _updateDateField(configKey: string, value: string): void {
         const newConfig = { ...this._config, [configKey]: value };
         this._config = newConfig as CardConfig;
         this._fireConfigChanged(newConfig as CardConfig);
     }
-    
+
     private _toggleTargetDateMode(): void {
         this._targetDateTemplateMode = !this._targetDateTemplateMode;
     }
-    
+
     private _toggleCreationDateMode(): void {
         this._creationDateTemplateMode = !this._creationDateTemplateMode;
     }
@@ -289,12 +289,12 @@ export class TimeFlowCardEditor extends LitElement {
      */
     private _getEffectiveCompactFormat(): boolean {
         const { show_months, show_days, show_hours, show_minutes, show_seconds, compact_format } = this._config;
-        
+
         // If explicitly set, use that value
         if (compact_format !== undefined) {
             return compact_format;
         }
-        
+
         // Otherwise, auto-enable if 3+ units are shown
         const enabledUnits = [show_months, show_days, show_hours, show_minutes, show_seconds].filter(v => v === true).length;
         return enabledUnits >= 3;
@@ -302,7 +302,7 @@ export class TimeFlowCardEditor extends LitElement {
 
     render(): TemplateResult {
         const cfg = this._config || {};
-        
+
         // Create a display config that shows the effective compact_format state
         const displayCfg = {
             ...cfg,
@@ -315,7 +315,7 @@ export class TimeFlowCardEditor extends LitElement {
             // TIMER SOURCE - Most important, always visible at top
             // ═══════════════════════════════════════════════════════════
             { name: 'timer_entity', selector: { entity: { domain: ['timer', 'sensor', 'input_datetime'] } } },
-            
+
             // Smart Assistant Auto-Discovery (visible toggles)
             {
                 type: 'grid',
@@ -324,14 +324,14 @@ export class TimeFlowCardEditor extends LitElement {
                     { name: 'auto_discover_google', selector: { boolean: {} } },
                 ]
             },
-            
+
             // ═══════════════════════════════════════════════════════════
             // DISPLAY - Title, subtitle, and expired text
             // ═══════════════════════════════════════════════════════════
             { name: 'title', selector: { text: {} } },
             { name: 'subtitle', selector: { text: {} } },
             { name: 'expired_text', selector: { text: {} } },
-            
+
             // ═══════════════════════════════════════════════════════════
             // TIME UNITS - Always visible as grid
             // ═══════════════════════════════════════════════════════════
@@ -346,7 +346,7 @@ export class TimeFlowCardEditor extends LitElement {
                     { name: 'compact_format', selector: { boolean: {} } },
                 ]
             },
-            
+
             // ═══════════════════════════════════════════════════════════
             // APPEARANCE - Expandable (secondary settings)
             // ═══════════════════════════════════════════════════════════
@@ -361,7 +361,7 @@ export class TimeFlowCardEditor extends LitElement {
                     { name: 'expired_animation', selector: { boolean: {} } },
                 ]
             },
-            
+
             // ═══════════════════════════════════════════════════════════
             // LAYOUT - Expandable
             // ═══════════════════════════════════════════════════════════
@@ -380,7 +380,7 @@ export class TimeFlowCardEditor extends LitElement {
                     { name: 'aspect_ratio', selector: { text: {} } },
                 ]
             },
-            
+
             // ═══════════════════════════════════════════════════════════
             // PROGRESS CIRCLE - Expandable
             // ═══════════════════════════════════════════════════════════
@@ -398,7 +398,7 @@ export class TimeFlowCardEditor extends LitElement {
                     },
                 ]
             },
-            
+
             // ═══════════════════════════════════════════════════════════
             // ALEXA/GOOGLE OPTIONS - Expandable
             // ═══════════════════════════════════════════════════════════
@@ -412,7 +412,7 @@ export class TimeFlowCardEditor extends LitElement {
                     { name: 'show_alexa_device', selector: { boolean: {} } },
                 ]
             },
-            
+
             // ═══════════════════════════════════════════════════════════
             // ACTIONS - Expandable
             // ═══════════════════════════════════════════════════════════
@@ -432,20 +432,20 @@ export class TimeFlowCardEditor extends LitElement {
             <!-- Date Fields with Template Toggle -->
             <div class="date-fields-section">
                 ${this._renderDateField(
-                    'target_date',
-                    'Target Date',
-                    'Date/time when countdown ends',
-                    this._targetDateTemplateMode,
-                    () => this._toggleTargetDateMode()
-                )}
+            'target_date',
+            'Target Date',
+            'Date/time when countdown ends',
+            this._targetDateTemplateMode,
+            () => this._toggleTargetDateMode()
+        )}
                 
                 ${this._renderDateField(
-                    'creation_date',
-                    'Creation Date',
-                    'Start date (defaults to now)',
-                    this._creationDateTemplateMode,
-                    () => this._toggleCreationDateMode()
-                )}
+            'creation_date',
+            'Creation Date',
+            'Start date (defaults to now)',
+            this._creationDateTemplateMode,
+            () => this._toggleCreationDateMode()
+        )}
             </div>
             
             <ha-form

@@ -1,15 +1,58 @@
 // Enhanced types/index.ts with Alexa Timer support and Action handling
+// Updated to support WebSocket subscriptions for efficient template evaluation
+
+import { UnsubscribeFunc, Connection } from 'home-assistant-js-websocket';
 
 export interface HomeAssistant {
   states: { [entity_id: string]: any };
   callService: (domain: string, service: string, serviceData?: any) => void;
   callApi: (method: string, path: string, data?: any) => Promise<any>;
+  connection: Connection; // WebSocket connection for subscriptions
+  user?: {
+    name: string;
+    id: string;
+    is_admin: boolean;
+    is_owner: boolean;
+  };
   locale: {
     language: string;
     [key: string]: any;
   };
   // Add other HA properties as needed
 }
+
+// WebSocket template rendering types (matches Home Assistant's API)
+export interface RenderTemplateResult {
+  result: string;
+  listeners: TemplateListeners;
+}
+
+export interface TemplateListeners {
+  all: boolean;
+  domains: string[];
+  entities: string[];
+  time: boolean;
+}
+
+// Function to subscribe to template rendering via WebSocket
+export const subscribeRenderTemplate = (
+  conn: Connection,
+  onChange: (result: RenderTemplateResult) => void,
+  params: {
+    template: string;
+    entity_ids?: string | string[];
+    variables?: Record<string, unknown>;
+    timeout?: number;
+    strict?: boolean;
+  }
+): Promise<UnsubscribeFunc> =>
+  conn.subscribeMessage<RenderTemplateResult>((msg) => onChange(msg), {
+    type: 'render_template',
+    ...params,
+  });
+
+// Re-export for convenience
+export type { UnsubscribeFunc };
 
 export interface CountdownState {
   months: number;

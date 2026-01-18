@@ -1,6 +1,6 @@
 {
   "name": "timeflow-card",
-  "version": "3.1.2",
+  "version": "3.1.3",
   "type": "module",
   "description": "A beautiful countdown timer card with progress circle and full Home Assistant template support",
   "main": "timeflow-card.js",
@@ -53,6 +53,7 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "home-assistant-js-websocket": "^9.6.0",
     "lit": "^3.3.1"
   }
 }

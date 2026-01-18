@@ -230,7 +230,7 @@ export class TimeFlowCard extends LitElement {
       // Validate the config with new enhanced validation
       const validationResult = ConfigValidator.validateConfig(config);
       this._validationResult = validationResult;
-      
+
       // Determine if we should proceed with the configuration
       if (validationResult.hasCriticalErrors) {
         // Use safe config if available, otherwise use stub config
@@ -248,11 +248,11 @@ export class TimeFlowCard extends LitElement {
         this.config = { ...config };
         this._resolvedConfig = { ...config };
       }
-      
+
       this._initialized = false; // Reset initialization flag
       this.templateService.clearTemplateCache();
       this.styleManager.clearCache();
-      
+
       // Trigger immediate update after config change
       this._updateCountdownAndRender().then(() => {
         this._initialized = true;
@@ -260,7 +260,7 @@ export class TimeFlowCard extends LitElement {
       });
     } catch (err) {
       // Handle unexpected validation errors
-      
+
       // Create a validation result for unexpected errors
       this._validationResult = {
         isValid: false,
@@ -275,11 +275,11 @@ export class TimeFlowCard extends LitElement {
         hasWarnings: false,
         safeConfig: this.getStubConfig()
       };
-      
+
       this.config = this.getStubConfig();
       this._resolvedConfig = { ...this.config };
       this._initialized = true; // Make sure we're initialized to render the error
-      
+
       // Force update to show error message
       this.requestUpdate();
     }
@@ -289,7 +289,7 @@ export class TimeFlowCard extends LitElement {
   firstUpdated(): void {
     // Set up template service with card reference
     this.templateService.card = this;
-    
+
     // FIXED: Initialize immediately on first update
     this._updateCountdownAndRender().then(() => {
       this._initialized = true;
@@ -298,10 +298,19 @@ export class TimeFlowCard extends LitElement {
     });
   }
 
-  // Cleanup on disconnect
+  // Connect template subscriptions when card is added to DOM
+  connectedCallback(): void {
+    super.connectedCallback();
+    // Connect template service for WebSocket subscriptions
+    this.templateService.connect();
+  }
+
+  // Cleanup on disconnect - unsubscribe from all WebSocket connections
   disconnectedCallback(): void {
     super.disconnectedCallback();
     this._stopCountdownUpdates();
+    // Disconnect template service - saves cache and unsubscribes
+    this.templateService.disconnect();
   }
 
   updated(changedProperties: Map<string | number | symbol, unknown>): void {
@@ -310,9 +319,9 @@ export class TimeFlowCard extends LitElement {
       if (this.hass) {
         this._localize = setupLocalize(this.hass);
       }
-      
-      // Clear template caches on hass or config changes
-      this.templateService.clearTemplateCache();
+
+      // Note: With WebSocket subscriptions, templates auto-update when dependencies change.
+      // No manual cache clearing needed - the subscriptions handle freshness automatically.
       this._updateCountdownAndRender();
     }
   }
@@ -405,13 +414,13 @@ export class TimeFlowCard extends LitElement {
   private _renderCard(): TemplateResult {
 
     const {
-      title ,
+      title,
       subtitle,
       text_color,
       background_color,
       progress_color,
-      stroke_width ,
-      icon_size ,
+      stroke_width,
+      icon_size,
       expired_animation = true,
       expired_text = '',
       width,
@@ -443,10 +452,10 @@ export class TimeFlowCard extends LitElement {
 
     // Generate dimension styles for the card
     const dimensionStyles = this.styleManager.generateCardDimensionStyles(width, height, aspect_ratio);
-    
+
     // FIXED: Compose CSS styles with proper background handling
     const cardStyles = [
-      `background: ${cardBackground}`, 
+      `background: ${cardBackground}`,
       `color: ${textColor}`,
       `--timeflow-card-background-color: ${cardBackground}`,
       `--timeflow-card-text-color: ${textColor}`,
@@ -521,12 +530,12 @@ export class TimeFlowCard extends LitElement {
 
     // Create resolved config 
     const configWithDefaults = { ...this._resolvedConfig };
-    
+
     // Map timer_entity to entity field for action handling compatibility
     if (configWithDefaults.timer_entity && !configWithDefaults.entity) {
       configWithDefaults.entity = configWithDefaults.timer_entity;
     }
-    
+
     // Following timer-bar-card pattern: Set default tap action if entity exists but no tap action defined
     if (configWithDefaults.entity && !configWithDefaults.tap_action) {
       configWithDefaults.tap_action = { action: 'more-info' };
@@ -534,7 +543,7 @@ export class TimeFlowCard extends LitElement {
 
     // Check if tap action should show pointer cursor (following timer-bar-card logic)
     const shouldShowPointer = configWithDefaults.tap_action?.action !== "none";
-    
+
     // Enable action handlers when we have actions (following timer-bar-card pattern)
     const shouldEnableActions = configWithDefaults.tap_action || configWithDefaults.hold_action || configWithDefaults.double_tap_action;
 
@@ -597,6 +606,6 @@ export class TimeFlowCard extends LitElement {
 
   // Static version info
   static get version() {
-    return '3.1.2';
+    return '3.1.3';
   }
 }
