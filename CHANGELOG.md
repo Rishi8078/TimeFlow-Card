@@ -5,6 +5,36 @@ All notable changes to TimeFlow Card will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0/).
 
+## [3.2.0] - 2026-01-25
+
+This release introduces two new card styles, header icons, and fixes the "Starting..." display issue.
+
+### Features
+
+- **New Card Styles**: Added two new compact card layouts:
+  - **Eventy Style** (`style: eventy`): Compact horizontal view with icon, title/subtitle, and prominent countdown unit display
+  - **Classic Compact Style** (`style: classic-compact`): Compact horizontal layout combining icon, title/subtitle, and progress circle
+- **Header Icons**: Added icon support for all card styles with customizable colors and backgrounds
+  - `header_icon`: Icon to display (e.g., `mdi:cake-variant`)
+  - `header_icon_color`: Icon color
+  - `header_icon_background`: Icon background color
+
+### Fixed
+
+- **"Starting..." Display Issue** ([#33](https://github.com/Rishi8078/TimeFlow-Card/issues/33)): Card now auto-falls back to the highest available time unit instead of showing "Starting..." when the countdown begins
+- **Code Cleanup**: Removed redundant custom element registration in ErrorDisplay component
+
+### Changed
+
+- **Improved Time Unit Display**: Better handling of time unit visibility with automatic fallback to the next available unit
+- **Localized Time Units**: Eventy-style labels are now fully localized (DAYS → DÍAS, JOURS, TAGE, etc.)
+
+### Notes
+
+- **Breaking Changes**: None
+- **New Dependencies**: None
+- **Compatibility**: Works with all existing configurations
+
 ## [3.1.2] - 2026-01-17
 
 This release fixes critical countdown calculation issues that were causing inaccurate time displays.
