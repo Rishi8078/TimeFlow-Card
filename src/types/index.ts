@@ -97,8 +97,14 @@ export interface ActionHandlerEvent extends Event {
   };
 }
 
+// Card style options
+export type CardStyle = 'classic' | 'eventy' | 'classic-compact';
+
 export interface CardConfig {
   type: string;
+
+  // Card style
+  style?: CardStyle;  // 'classic' = circle progress, 'eventy' = compact horizontal, 'classic-compact' = horizontal with circle
 
   // Basic countdown configuration
   target_date?: string;
@@ -116,6 +122,11 @@ export interface CardConfig {
   subtitle?: string;
   subtitle_prefix?: string;  // Text to prepend to countdown (e.g., "in", "Only")
   subtitle_suffix?: string;  // Text to append to countdown (e.g., "left", "remaining")
+
+  // Header icon configuration
+  header_icon?: string;           // Icon to display next to title (e.g., "mdi:cake-variant")
+  header_icon_color?: string;     // Icon color (e.g., "#3b82f6")
+  header_icon_background?: string; // Icon background color (e.g., "rgba(59, 130, 246, 0.2)")
 
   // Time unit visibility
   show_months?: boolean;

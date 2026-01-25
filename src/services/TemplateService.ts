@@ -1,7 +1,7 @@
 import { HomeAssistant, TimeFlowCard, RenderTemplateResult, subscribeRenderTemplate, UnsubscribeFunc } from '../types/index';
 
 /**
- * CacheManager - Simple cache with time-based expiration
+ * CacheManager - Simple cache with time-based expiration 
  * Used to persist template results across disconnect/reconnect
  */
 class CacheManager<T> {

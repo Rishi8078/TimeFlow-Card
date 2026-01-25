@@ -54,7 +54,7 @@ export class ErrorDisplay extends LitElement {
 
     // Filter out info messages, only show critical and warning
     const relevantErrors = this.errors.filter(e => e.severity === 'critical' || e.severity === 'warning');
-    
+
     if (relevantErrors.length === 0) {
       return html``;
     }
@@ -72,6 +72,3 @@ export class ErrorDisplay extends LitElement {
     `;
   }
 }
-
-// Register the custom element
-customElements.define('error-display', ErrorDisplay);

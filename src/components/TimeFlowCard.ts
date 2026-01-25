@@ -10,6 +10,7 @@ import { StyleManager } from '../utils/StyleManager';
 import { setupLocalize, LocalizeFunction } from '../utils/localize';
 import { HomeAssistant, CountdownState, CardConfig, ActionHandlerEvent } from '../types/index';
 import { createActionHandler, createHandleAction } from '../utils/action-handler';
+import { DEFAULT_BACKGROUND, DEFAULT_TEXT_COLOR, parseMillisecondsToUnits, getUnitLabel, getLocalizedEventyLabel } from '../utils/TimeUtils';
 import '../utils/ErrorDisplay';
 
 export class TimeFlowCard extends LitElement {
@@ -19,10 +20,10 @@ export class TimeFlowCard extends LitElement {
 
   // Reactive properties to trigger updates
   @property({ type: Object }) hass: HomeAssistant | null = null;
-  @property({ type: Object }) config: CardConfig = this.getStubConfig();
+  @property({ type: Object }) config: CardConfig = TimeFlowCard.getStubConfig();
 
   // Internal reactive state for resolved config props and countdown state
-  @state() private _resolvedConfig: CardConfig = this.getStubConfig();
+  @state() private _resolvedConfig: CardConfig = TimeFlowCard.getStubConfig();
   @state() private _progress: number = 0;
   @state() private _countdown: CountdownState = {
     months: 0,
@@ -73,8 +74,13 @@ export class TimeFlowCard extends LitElement {
         border-color: var(--ha-card-border-color, var(--divider-color, #e0e0e0));
         /* REMOVED: transition that causes flash - only animate specific properties if needed */
         /* transition: background-color 0.3s ease; */
-        min-height: 120px; /* Prevent layout shift */
+        /* min-height removed - let content determine height, especially for eventy style */
         user-select: none; /* Prevent text selection during interactions */
+      }
+      
+      /* Classic style needs minimum height, but compact styles should auto-size */
+      ha-card:not(:has(.card-content-list)):not(:has(.card-content-compact)) {
+        min-height: 120px;
       }
       
       /* Make card interactive when actions are configured */
@@ -133,6 +139,24 @@ export class TimeFlowCard extends LitElement {
         margin-bottom: 0;
       }
       
+      .header-icon {
+        flex-shrink: 0;
+        margin-right: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        /* Size matches title + subtitle height */
+        width: var(--header-icon-container-size, 44px);
+        height: var(--header-icon-container-size, 44px);
+      }
+      
+      .header-icon ha-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        --mdc-icon-size: var(--header-icon-size, 24px);
+      }
+      
       .title-section {
         flex: 1;
         display: flex;
@@ -176,6 +200,161 @@ export class TimeFlowCard extends LitElement {
         opacity: 0.9;
       }
       
+      /* ═══════════════════════════════════════════════════════════════════════
+         LIST LAYOUT STYLES - Compact horizontal view
+         ═══════════════════════════════════════════════════════════════════════ */
+      
+      .card-content-list {
+        display: grid;
+        grid-template-areas: "icon title countdown";
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 20px;
+        min-height: 50px;
+      }
+      
+      .list-icon {
+        grid-area: icon;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: var(--list-icon-size, 44px);
+        height: var(--list-icon-size, 44px);
+        border-radius: var(--ha-card-border-radius, 12px);
+        flex-shrink: 0;
+      }
+      
+      .list-icon ha-icon {
+        --mdc-icon-size: calc(var(--list-icon-size, 44px) * 0.55);
+      }
+      
+      .list-title-section {
+        grid-area: title;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0; /* Allow text truncation */
+      }
+      
+      .list-title {
+        font-weight: 600;
+        font-size: var(--list-title-size, 16px);
+        line-height: 1.2;
+        color: var(--timeflow-card-text-color, var(--primary-text-color));
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      
+      .list-subtitle {
+        font-size: var(--list-subtitle-size, 13px);
+        font-weight: 400;
+        line-height: 1.2;
+        color: var(--timeflow-card-text-color, var(--primary-text-color));
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      
+      .list-countdown {
+        grid-area: countdown;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        line-height: 1;
+        flex-shrink: 0;
+      }
+      
+      .list-countdown-value {
+        font-size: var(--list-countdown-size, 26px);
+        font-weight: 700;
+        color: var(--timeflow-card-text-color, var(--primary-text-color));
+      }
+      
+      .list-countdown-unit {
+        font-size: 10px;
+        font-weight: 700;
+        opacity: 0.6;
+        margin-top: 2px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      /* ═══════════════════════════════════════════════════════════════════════
+         CLASSIC COMPACT LAYOUT STYLES - Horizontal view with progress circle
+         ═══════════════════════════════════════════════════════════════════════ */
+      
+      .card-content-compact {
+        display: grid;
+        grid-template-areas: "icon title progress";
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        min-height: 50px;
+      }
+      
+      .compact-icon {
+        grid-area: icon;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: var(--compact-icon-size, 44px);
+        height: var(--compact-icon-size, 44px);
+        border-radius: var(--ha-card-border-radius, 12px);
+        flex-shrink: 0;
+      }
+      
+      .compact-icon ha-icon {
+        --mdc-icon-size: calc(var(--compact-icon-size, 44px) * 0.55);
+      }
+      
+      .compact-title-section {
+        grid-area: title;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0; /* Allow text truncation */
+      }
+      
+      .compact-title {
+        font-weight: 600;
+        font-size: var(--compact-title-size, 16px);
+        line-height: 1.2;
+        color: var(--timeflow-card-text-color, var(--primary-text-color));
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      
+      .compact-subtitle {
+        font-size: var(--compact-subtitle-size, 13px);
+        font-weight: 400;
+        line-height: 1.2;
+        color: var(--timeflow-card-text-color, var(--primary-text-color));
+        opacity: 0.7;
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      
+      .compact-progress {
+        grid-area: progress;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      
+      .compact-progress progress-circle {
+        opacity: 0.9;
+      }
+      
       @keyframes celebration {
         0% { transform: scale(1); }
         50% { transform: scale(1.05); }
@@ -194,7 +373,7 @@ export class TimeFlowCard extends LitElement {
   constructor() {
     super();
     // Initialize with proper stub config
-    const stubConfig = this.getStubConfig();
+    const stubConfig = TimeFlowCard.getStubConfig();
     this.config = stubConfig;
     this._resolvedConfig = stubConfig;
   }
@@ -220,11 +399,6 @@ export class TimeFlowCard extends LitElement {
     };
   }
 
-  // Instance method for internal use
-  getStubConfig(): CardConfig {
-    return TimeFlowCard.getStubConfig();
-  }
-
   setConfig(config: CardConfig): void {
     try {
       // Validate the config with new enhanced validation
@@ -234,7 +408,7 @@ export class TimeFlowCard extends LitElement {
       // Determine if we should proceed with the configuration
       if (validationResult.hasCriticalErrors) {
         // Use safe config if available, otherwise use stub config
-        this.config = validationResult.safeConfig || this.getStubConfig();
+        this.config = validationResult.safeConfig || TimeFlowCard.getStubConfig();
         this._resolvedConfig = { ...this.config };
       } else if (validationResult.hasWarnings) {
         // Configuration has warnings - don't proceed with normal flow
@@ -273,10 +447,10 @@ export class TimeFlowCard extends LitElement {
         }],
         hasCriticalErrors: true,
         hasWarnings: false,
-        safeConfig: this.getStubConfig()
+        safeConfig: TimeFlowCard.getStubConfig()
       };
 
-      this.config = this.getStubConfig();
+      this.config = TimeFlowCard.getStubConfig();
       this._resolvedConfig = { ...this.config };
       this._initialized = true; // Make sure we're initialized to render the error
 
@@ -368,14 +542,29 @@ export class TimeFlowCard extends LitElement {
       'progress_color',
       'primary_color',
       'secondary_color',
-      'expired_text'
+      'expired_text',
+      'header_icon',
+      'header_icon_color',
+      'header_icon_background'
     ] as const;
 
-    // Resolve templates where applicable
+    // Resolve templates AND entity IDs where applicable
+    // The resolveValue method handles both templates ({{ }}) and entity IDs (sensor.xxx)
+    // EXCEPTION: timer_entity should NOT be resolved - it must remain as an entity ID
+    // for TimerEntityService to look up directly via hass.states[entityId]
     for (const key of templateKeys) {
-      if (typeof resolvedConfig[key] === 'string' && this.templateService.isTemplate(resolvedConfig[key] as string)) {
-        const resolvedValue = await this.templateService.resolveValue(resolvedConfig[key] as string);
-        resolvedConfig[key] = resolvedValue || undefined;
+      if (typeof resolvedConfig[key] === 'string') {
+        // timer_entity should only be resolved if it's a template, not if it's a plain entity ID
+        if (key === 'timer_entity') {
+          if (this.templateService.isTemplate(resolvedConfig[key] as string)) {
+            const resolvedValue = await this.templateService.resolveValue(resolvedConfig[key] as string);
+            resolvedConfig[key] = resolvedValue || undefined;
+          }
+          // Otherwise keep the entity ID as-is
+        } else {
+          const resolvedValue = await this.templateService.resolveValue(resolvedConfig[key] as string);
+          resolvedConfig[key] = resolvedValue || undefined;
+        }
       }
     }
 
@@ -407,7 +596,18 @@ export class TimeFlowCard extends LitElement {
       `;
     }
 
-    // Render normal card only if validation passed completely
+    // Choose style based on config
+    const style = this._resolvedConfig.style || 'classic';
+    
+    if (style === 'eventy') {
+      return this._renderEventyCard();
+    }
+    
+    if (style === 'classic-compact') {
+      return this._renderClassicCompactCard();
+    }
+    
+    // Classic: circle progress style
     return this._renderCard();
   }
 
@@ -438,9 +638,8 @@ export class TimeFlowCard extends LitElement {
     const enabledUnits = [show_months, show_days, show_hours, show_minutes, show_seconds].filter(v => v === true).length;
     const useCompact = compact_format === true || (compact_format !== false && enabledUnits >= 3);
 
-    // FIXED: Ensure background color has a sensible default
-    const cardBackground = background_color || 'var(--ha-card-background, var(--ha-card-background-color, #1a1a1a))';
-    const textColor = text_color || 'var(--primary-text-color, #fff)';
+    // Get card colors using helper
+    const { cardBackground, textColor } = this._getCardColors();
     const mainProgressColor = progress_color || text_color || 'var(--progress-color, #4caf50)';
 
     // Calculate dynamic circle size based on card dimensions to prevent overflow
@@ -508,44 +707,14 @@ export class TimeFlowCard extends LitElement {
       }
     }
 
-    // Compose title text with fallback
-    let titleText = title;
-    if (titleText === undefined || titleText === null || (typeof titleText === 'string' && titleText.trim() === '')) {
-      if (this._resolvedConfig.timer_entity && this.hass) {
-        titleText = TimerEntityService.getTimerTitle(
-          this._resolvedConfig.timer_entity,
-          this.hass
-        );
-      } else {
-        // For auto-discovery, avoid stale expired_text as title
-        titleText = (this._resolvedConfig.auto_discover_alexa || this._resolvedConfig.auto_discover_google) ? 'Countdown Timer' : (this._expired ? expired_text : 'Countdown Timer');
-      }
-    }
+    // Compose title text with fallback using helper
+    const titleText = this._getTitleText();
 
-    // FIXED: Determine card classes including initialization state
-    const cardClasses = [
-      this._initialized ? 'initialized' : '',
-      (this._expired && expired_animation) ? 'expired' : ''
-    ].filter(Boolean).join(' ');
+    // Get card classes using helper
+    const cardClasses = this._getCardClasses(expired_animation);
 
-    // Create resolved config 
-    const configWithDefaults = { ...this._resolvedConfig };
-
-    // Map timer_entity to entity field for action handling compatibility
-    if (configWithDefaults.timer_entity && !configWithDefaults.entity) {
-      configWithDefaults.entity = configWithDefaults.timer_entity;
-    }
-
-    // Following timer-bar-card pattern: Set default tap action if entity exists but no tap action defined
-    if (configWithDefaults.entity && !configWithDefaults.tap_action) {
-      configWithDefaults.tap_action = { action: 'more-info' };
-    }
-
-    // Check if tap action should show pointer cursor (following timer-bar-card logic)
-    const shouldShowPointer = configWithDefaults.tap_action?.action !== "none";
-
-    // Enable action handlers when we have actions (following timer-bar-card pattern)
-    const shouldEnableActions = configWithDefaults.tap_action || configWithDefaults.hold_action || configWithDefaults.double_tap_action;
+    // Get action config using helper
+    const { configWithDefaults, shouldEnableActions } = this._getActionConfig();
 
     return html`
       <ha-card 
@@ -556,7 +725,15 @@ export class TimeFlowCard extends LitElement {
         @action=${shouldEnableActions && this.hass ? createHandleAction(this.hass, configWithDefaults) : undefined}
       >
         <div class="card-content">
-          <header class="header">
+          <header class="header" style="${this._resolvedConfig.header_icon ? `--header-icon-container-size: calc(${proportionalSizes.titleSize}rem * 1.3 + ${proportionalSizes.subtitleSize}rem * 1.2 + 2px); --header-icon-size: calc(${proportionalSizes.titleSize}rem * 0.9 + ${proportionalSizes.subtitleSize}rem * 0.7);` : ''}">
+            ${this._resolvedConfig.header_icon ? html`
+              <div class="header-icon" style="${this._resolvedConfig.header_icon_background ? `background: ${this._resolvedConfig.header_icon_background}; border-radius: var(--ha-card-border-radius, 12px);` : ''}">
+                <ha-icon 
+                  icon="${this._resolvedConfig.header_icon}"
+                  style="color: ${this._resolvedConfig.header_icon_color || 'var(--primary-text-color)'}"
+                ></ha-icon>
+              </div>
+            ` : ''}
             <div class="title-section">
               <h2 class="title" aria-live="polite">${titleText}</h2>
               <p class="subtitle" aria-live="polite">${subtitleText}</p>
@@ -581,10 +758,360 @@ export class TimeFlowCard extends LitElement {
   }
 
   /**
+   * Renders the Eventy style - compact horizontal view with icon, title/subtitle, and countdown
+   */
+  private _renderEventyCard(): TemplateResult {
+    const {
+      title,
+      subtitle,
+      text_color,
+      background_color,
+      expired_animation = true,
+      expired_text = '',
+      header_icon = 'mdi:calendar-clock',
+      header_icon_color,
+      header_icon_background,
+      show_months,
+      show_days,
+      show_hours,
+      show_minutes,
+      show_seconds,
+      compact_format
+    } = this._resolvedConfig;
+
+    // Determine the primary countdown unit to display prominently
+    const { primaryValue, primaryUnit } = this._getPrimaryCountdownUnit();
+
+    // Get card colors using helper
+    const { cardBackground, textColor } = this._getCardColors();
+
+    const cardStyles = [
+      `background: ${cardBackground}`,
+      `color: ${textColor}`,
+      `--timeflow-card-background-color: ${cardBackground}`,
+      `--timeflow-card-text-color: ${textColor}`,
+    ].join('; ');
+
+    // Get card classes using helper
+    const cardClasses = this._getCardClasses(expired_animation);
+
+    // Compose subtitle text - for Eventy style, show formatted target date
+    let subtitleText: string;
+    if (subtitle) {
+      // Use custom subtitle if provided
+      subtitleText = subtitle;
+    } else if (this._expired) {
+      // Show expired text when countdown is complete
+      subtitleText = expired_text || 'Completed';
+    } else {
+      // Format target date for display (e.g., "Tue, Feb 3")
+      subtitleText = this._formatTargetDate();
+    }
+
+    // Get title text using helper
+    const titleText = this._getTitleText();
+
+    // Get action config using helper
+    const { configWithDefaults, shouldEnableActions } = this._getActionConfig();
+
+    return html`
+      <ha-card 
+        class="${cardClasses}" 
+        style="${cardStyles}"
+        ?actionHandler=${shouldEnableActions}
+        .actionHandler=${shouldEnableActions ? createActionHandler(configWithDefaults) : undefined}
+        @action=${shouldEnableActions && this.hass ? createHandleAction(this.hass, configWithDefaults) : undefined}
+      >
+        <div class="card-content-list">
+          <!-- Icon -->
+          <div 
+            class="list-icon" 
+            style="background: ${header_icon_background || 'rgba(var(--rgb-primary-color, 66, 133, 244), 0.15)'};"
+          >
+            <ha-icon 
+              icon="${header_icon}"
+              style="color: ${header_icon_color || 'var(--primary-color, var(--primary-text-color))'}"
+            ></ha-icon>
+          </div>
+          
+          <!-- Title & Subtitle -->
+          <div class="list-title-section">
+            <h2 class="list-title">${titleText}</h2>
+            <p class="list-subtitle">${subtitleText}</p>
+          </div>
+          
+          <!-- Countdown Display -->
+          <div class="list-countdown">
+            <span class="list-countdown-value">${primaryValue}</span>
+            <span class="list-countdown-unit">${primaryUnit}</span>
+          </div>
+        </div>
+      </ha-card>
+    `;
+  }
+
+  /**
+   * Renders the Classic Compact style - horizontal view with icon, title/subtitle, and progress circle
+   */
+  private _renderClassicCompactCard(): TemplateResult {
+    const {
+      title,
+      subtitle,
+      text_color,
+      background_color,
+      progress_color,
+      stroke_width = 15,
+      icon_size = 100,
+      expired_animation = true,
+      expired_text = '',
+      header_icon = 'mdi:calendar-clock',
+      header_icon_color,
+      header_icon_background,
+      compact_format
+    } = this._resolvedConfig;
+
+    // Get card colors using helper
+    const { cardBackground, textColor } = this._getCardColors();
+
+    const cardStyles = [
+      `background: ${cardBackground}`,
+      `color: ${textColor}`,
+      `--timeflow-card-background-color: ${cardBackground}`,
+      `--timeflow-card-text-color: ${textColor}`,
+    ].join('; ');
+
+    // Get card classes using helper
+    const cardClasses = this._getCardClasses(expired_animation);
+
+    // Compose subtitle text - show countdown time like classic
+    const timeFormatCompact = compact_format !== false;
+    let subtitleText: string;
+    if (subtitle) {
+      subtitleText = subtitle;
+    } else if (this._expired) {
+      subtitleText = expired_text || 'Completed';
+    } else {
+      subtitleText = this.countdownService.getSubtitle(this._resolvedConfig, this.hass, this._localize || undefined, timeFormatCompact);
+    }
+
+    // Get title text using helper
+    const titleText = this._getTitleText();
+
+    // Get action config using helper
+    const { configWithDefaults, shouldEnableActions } = this._getActionConfig();
+
+    // Calculate dynamic circle size for compact layout (smaller than classic)
+    const baseCircleSize = icon_size || 100;
+    const compactCircleSize = Math.min(baseCircleSize, 50); // Max 50px for compact
+    const compactStroke = Math.max(4, (stroke_width || 15) * 0.4); // Proportionally thinner
+
+    // Get progress color
+    const mainProgressColor = progress_color || 'var(--primary-color)';
+
+    return html`
+      <ha-card 
+        class="${cardClasses}" 
+        style="${cardStyles}"
+        ?actionHandler=${shouldEnableActions}
+        .actionHandler=${shouldEnableActions ? createActionHandler(configWithDefaults) : undefined}
+        @action=${shouldEnableActions && this.hass ? createHandleAction(this.hass, configWithDefaults) : undefined}
+      >
+        <div class="card-content-compact">
+          <!-- Icon -->
+          <div 
+            class="compact-icon" 
+            style="background: ${header_icon_background || 'rgba(var(--rgb-primary-color, 66, 133, 244), 0.15)'};"
+          >
+            <ha-icon 
+              icon="${header_icon}"
+              style="color: ${header_icon_color || 'var(--primary-color, var(--primary-text-color))'}"
+            ></ha-icon>
+          </div>
+          
+          <!-- Title & Subtitle -->
+          <div class="compact-title-section">
+            <h2 class="compact-title">${titleText}</h2>
+            <p class="compact-subtitle">${subtitleText}</p>
+          </div>
+          
+          <!-- Progress Circle -->
+          <div class="compact-progress">
+            <progress-circle
+              .progress="${this._progress}"
+              .color="${mainProgressColor}"
+              .size="${compactCircleSize}"
+              .strokeWidth="${compactStroke}"
+              aria-label="Countdown progress: ${Math.round(this._progress)}%"
+            ></progress-circle>
+          </div>
+        </div>
+      </ha-card>
+    `;
+  }
+
+  /**
+   * Gets the primary countdown value and unit to display in Eventy layout
+   * Returns the largest non-zero unit (e.g., "11" and "DAYS")
+   * Auto-switches to next available unit when current unit reaches 0 (same as Classic style)
+   * Supports localization for multi-language displays
+   */
+  private _getPrimaryCountdownUnit(): { primaryValue: number; primaryUnit: string } {
+    const { months, days, hours, minutes, seconds, total } = this._countdown;
+    const { show_months, show_days, show_hours, show_minutes, show_seconds } = this._resolvedConfig;
+    const t = this._localize || undefined;
+
+    // First, try to return an enabled unit that has a non-zero value
+    if (show_months !== false && months > 0) {
+      return { primaryValue: months, primaryUnit: getLocalizedEventyLabel('month', months, t) };
+    }
+    if (show_days !== false && days > 0) {
+      // Calculate total days including months if months are hidden
+      const totalDays = (show_months === false ? months * 30 : 0) + days;
+      return { primaryValue: totalDays, primaryUnit: getLocalizedEventyLabel('day', totalDays, t) };
+    }
+    if (show_hours !== false && hours > 0) {
+      return { primaryValue: hours, primaryUnit: getLocalizedEventyLabel('hour', hours, t) };
+    }
+    if (show_minutes !== false && minutes > 0) {
+      return { primaryValue: minutes, primaryUnit: getLocalizedEventyLabel('minute', minutes, t) };
+    }
+    if (show_seconds !== false && seconds > 0) {
+      return { primaryValue: seconds, primaryUnit: getLocalizedEventyLabel('second', seconds, t) };
+    }
+
+    // Fallback: All enabled units are zero, calculate from total milliseconds
+    // This handles cases like: user only enabled "days" but less than 24 hours remain
+    const totalMs = total || 0;
+    
+    if (totalMs <= 0) {
+      // Countdown is complete
+      return { primaryValue: 0, primaryUnit: show_seconds !== false ? getLocalizedEventyLabel('second', 0, t) : getLocalizedEventyLabel('day', 0, t) };
+    }
+
+    // Calculate fallback values from total milliseconds using shared utility
+    const fallback = parseMillisecondsToUnits(totalMs);
+
+    // Return the highest non-zero fallback unit
+    if (fallback.days > 0) {
+      return { primaryValue: fallback.days, primaryUnit: getLocalizedEventyLabel('day', fallback.days, t) };
+    }
+    if (fallback.hours > 0) {
+      return { primaryValue: fallback.hours, primaryUnit: getLocalizedEventyLabel('hour', fallback.hours, t) };
+    }
+    if (fallback.minutes > 0) {
+      return { primaryValue: fallback.minutes, primaryUnit: getLocalizedEventyLabel('minute', fallback.minutes, t) };
+    }
+    if (fallback.seconds > 0) {
+      return { primaryValue: fallback.seconds, primaryUnit: getLocalizedEventyLabel('second', fallback.seconds, t) };
+    }
+
+    // Truly at zero
+    return { primaryValue: 0, primaryUnit: getLocalizedEventyLabel('second', 0, t) };
+  }
+
+  /**
+   * Formats the target date for display in Eventy style (e.g., "Tue, Feb 3")
+   */
+  private _formatTargetDate(): string {
+    const targetDate = this._resolvedConfig.target_date;
+    if (!targetDate) return '';
+
+    try {
+      const date = new Date(targetDate);
+      if (isNaN(date.getTime())) return '';
+
+      // Get user's locale from Home Assistant or browser
+      const locale = this.hass?.locale?.language || navigator.language || 'en';
+
+      // Format: "Tue, Feb 3" style
+      const options: Intl.DateTimeFormatOptions = {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      };
+
+      return date.toLocaleDateString(locale, options);
+    } catch {
+      return '';
+    }
+  }
+
+  /**
+   * Gets card background and text colors with proper fallbacks
+   */
+  private _getCardColors(): { cardBackground: string; textColor: string } {
+    const { background_color, text_color } = this._resolvedConfig;
+    return {
+      cardBackground: background_color || DEFAULT_BACKGROUND,
+      textColor: text_color || DEFAULT_TEXT_COLOR
+    };
+  }
+
+  /**
+   * Gets card CSS classes based on initialization and expired state
+   */
+  private _getCardClasses(expired_animation: boolean = true): string {
+    return [
+      this._initialized ? 'initialized' : '',
+      (this._expired && expired_animation) ? 'expired' : ''
+    ].filter(Boolean).join(' ');
+  }
+
+  /**
+   * Gets title text with fallback logic for timers and auto-discovery
+   */
+  private _getTitleText(): string {
+    const { title, expired_text = '' } = this._resolvedConfig;
+    
+    if (title !== undefined && title !== null && !(typeof title === 'string' && title.trim() === '')) {
+      return title;
+    }
+    
+    // Fallback: try to get title from timer entity
+    if (this._resolvedConfig.timer_entity && this.hass) {
+      return TimerEntityService.getTimerTitle(this._resolvedConfig.timer_entity, this.hass);
+    }
+    
+    // Fallback: for auto-discovery or expired state
+    if (this._resolvedConfig.auto_discover_alexa || this._resolvedConfig.auto_discover_google) {
+      return 'Countdown Timer';
+    }
+    
+    return this._expired ? expired_text || 'Countdown Timer' : 'Countdown Timer';
+  }
+
+  /**
+   * Gets action handler configuration with proper defaults
+   */
+  private _getActionConfig(): { configWithDefaults: CardConfig; shouldEnableActions: boolean } {
+    const configWithDefaults = { ...this._resolvedConfig };
+    
+    // Map timer_entity to entity field for action handling compatibility
+    if (configWithDefaults.timer_entity && !configWithDefaults.entity) {
+      configWithDefaults.entity = configWithDefaults.timer_entity;
+    }
+    
+    // Set default tap action if entity exists but no tap action defined
+    if (configWithDefaults.entity && !configWithDefaults.tap_action) {
+      configWithDefaults.tap_action = { action: 'more-info' };
+    }
+    
+    const shouldEnableActions = !!(configWithDefaults.tap_action || configWithDefaults.hold_action || configWithDefaults.double_tap_action);
+    
+    return { configWithDefaults, shouldEnableActions };
+  }
+
+  /**
    * Helper: Returns card size (in Home Assistant's grid rows approx)
    */
   getCardSize(): number {
-    const { aspect_ratio = '2/1', height } = this.config;
+    const { aspect_ratio = '2/1', height, style } = this.config;
+    
+    // Eventy style is always compact (1 row)
+    if (style === 'eventy') {
+      return 1;
+    }
+    
     if (height) {
       const heightValue = parseInt(typeof height === 'string' ? height : height.toString());
       if (heightValue <= 100) return 1;

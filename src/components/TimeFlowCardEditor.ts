@@ -183,6 +183,14 @@ export class TimeFlowCardEditor extends LitElement {
             // Progress Circle
             'stroke_width': 'Thickness of the progress circle ring',
             'icon_size': 'Size of the progress circle',
+
+            // Header Icon
+            'header_icon': 'Material Design icon name (e.g., "mdi:cake-variant")',
+            'header_icon_color': 'Icon color (hex, name, or template)',
+            'header_icon_background': 'Icon background (e.g., "rgba(59, 130, 246, 0.2)")',
+
+            // Style
+            'style': 'Card style: Classic (vertical with circle), Eventy (compact horizontal), Classic Compact (horizontal with circle)',
         };
         return helpers[schema.name] || '';
     }
@@ -216,6 +224,10 @@ export class TimeFlowCardEditor extends LitElement {
             'stroke_width': 'Stroke Width',
             'icon_size': 'Circle Size',
             'aspect_ratio': 'Aspect Ratio',
+            'header_icon': 'Header Icon',
+            'header_icon_color': 'Icon Color',
+            'header_icon_background': 'Icon Background',
+            'style': 'Card Style',
         };
 
         if (labels[schema.name]) return labels[schema.name];
@@ -316,6 +328,23 @@ export class TimeFlowCardEditor extends LitElement {
 
         const schema = [
             // ═══════════════════════════════════════════════════════════
+            // CARD STYLE - Choose card appearance
+            // ═══════════════════════════════════════════════════════════════════════════════
+            { 
+                name: 'style', 
+                selector: { 
+                    select: { 
+                        options: [
+                            { value: 'classic', label: 'Classic (Circle Progress)' },
+                            { value: 'eventy', label: 'Eventy (Compact Horizontal)' },
+                            { value: 'classic-compact', label: 'Classic Compact (Horizontal + Circle)' }
+                        ],
+                        mode: 'dropdown'
+                    } 
+                } 
+            },
+
+            // ═══════════════════════════════════════════════════════════
             // TIMER SOURCE - Most important, always visible at top
             // ═══════════════════════════════════════════════════════════
             { name: 'timer_entity', selector: { entity: { domain: ['timer', 'sensor', 'input_datetime'] } } },
@@ -342,6 +371,25 @@ export class TimeFlowCardEditor extends LitElement {
                 ]
             },
             { name: 'expired_text', selector: { text: {} } },
+
+            // ═══════════════════════════════════════════════════════════
+            // HEADER ICON - Expandable
+            // ═══════════════════════════════════════════════════════════
+            {
+                type: "expandable",
+                title: "Header Icon",
+                icon: "mdi:image-filter-vintage",
+                schema: [
+                    { name: 'header_icon', selector: { icon: {} } },
+                    {
+                        type: 'grid',
+                        schema: [
+                            { name: 'header_icon_color', selector: { text: {} } },
+                            { name: 'header_icon_background', selector: { text: {} } },
+                        ]
+                    },
+                ]
+            },
 
             // ═══════════════════════════════════════════════════════════
             // TIME UNITS - Always visible as grid
