@@ -10,7 +10,7 @@ import { StyleManager } from '../utils/StyleManager';
 import { setupLocalize, LocalizeFunction } from '../utils/localize';
 import { HomeAssistant, CountdownState, CardConfig, ActionHandlerEvent } from '../types/index';
 import { createActionHandler, createHandleAction } from '../utils/action-handler';
-import { DEFAULT_BACKGROUND, DEFAULT_TEXT_COLOR, parseMillisecondsToUnits, getUnitLabel, getLocalizedEventyLabel } from '../utils/TimeUtils';
+import { parseMillisecondsToUnits, getUnitLabel, getLocalizedEventyLabel } from '../utils/TimeUtils';
 import '../utils/ErrorDisplay';
 
 export class TimeFlowCard extends LitElement {
@@ -65,7 +65,7 @@ export class TimeFlowCard extends LitElement {
         position: relative;
         overflow: hidden;
         /* Use HA theme background: respects user theme changes */
-        background: var(--ha-card-background, var(--ha-card-background-color, #1a1a1a));
+        background: var(--ha-card-background, var(--card-background-color, var(--secondary-background-color, transparent)));
         /* Use HA theme box-shadow: respects user theme */
         box-shadow: var(--ha-card-box-shadow, 0 2px 10px rgba(0, 0, 0, 0.1));
         /* Use HA theme border: respects user theme */
@@ -652,18 +652,15 @@ export class TimeFlowCard extends LitElement {
     // Generate dimension styles for the card
     const dimensionStyles = this.styleManager.generateCardDimensionStyles(width, height, aspect_ratio);
 
-    // FIXED: Compose CSS styles with proper background handling
+    // FIXED: Compose CSS styles - only override background/color when user explicitly configured them
     const cardStyles = [
-      `background: ${cardBackground}`,
-      `color: ${textColor}`,
-      `--timeflow-card-background-color: ${cardBackground}`,
-      `--timeflow-card-text-color: ${textColor}`,
+      ...(cardBackground ? [`background: ${cardBackground}`, `--timeflow-card-background-color: ${cardBackground}`] : []),
+      ...(textColor ? [`color: ${textColor}`, `--timeflow-card-text-color: ${textColor}`, `--progress-text-color: ${textColor}`] : []),
       `--timeflow-card-progress-color: ${mainProgressColor}`,
       `--timeflow-card-icon-size: ${dynamicCircleSize}px`,
       `--timeflow-card-stroke-width: ${dynamicStroke}`,
       `--timeflow-title-size: ${proportionalSizes.titleSize}rem`,
       `--timeflow-subtitle-size: ${proportionalSizes.subtitleSize}rem`,
-      `--progress-text-color: ${textColor}`,
       ...dimensionStyles
     ].join('; ');
 
@@ -786,10 +783,8 @@ export class TimeFlowCard extends LitElement {
     const { cardBackground, textColor } = this._getCardColors();
 
     const cardStyles = [
-      `background: ${cardBackground}`,
-      `color: ${textColor}`,
-      `--timeflow-card-background-color: ${cardBackground}`,
-      `--timeflow-card-text-color: ${textColor}`,
+      ...(cardBackground ? [`background: ${cardBackground}`, `--timeflow-card-background-color: ${cardBackground}`] : []),
+      ...(textColor ? [`color: ${textColor}`, `--timeflow-card-text-color: ${textColor}`] : []),
     ].join('; ');
 
     // Get card classes using helper
@@ -874,10 +869,8 @@ export class TimeFlowCard extends LitElement {
     const { cardBackground, textColor } = this._getCardColors();
 
     const cardStyles = [
-      `background: ${cardBackground}`,
-      `color: ${textColor}`,
-      `--timeflow-card-background-color: ${cardBackground}`,
-      `--timeflow-card-text-color: ${textColor}`,
+      ...(cardBackground ? [`background: ${cardBackground}`, `--timeflow-card-background-color: ${cardBackground}`] : []),
+      ...(textColor ? [`color: ${textColor}`, `--timeflow-card-text-color: ${textColor}`] : []),
     ].join('; ');
 
     // Get card classes using helper
@@ -1042,8 +1035,8 @@ export class TimeFlowCard extends LitElement {
   private _getCardColors(): { cardBackground: string; textColor: string } {
     const { background_color, text_color } = this._resolvedConfig;
     return {
-      cardBackground: background_color || DEFAULT_BACKGROUND,
-      textColor: text_color || DEFAULT_TEXT_COLOR
+      cardBackground: background_color || '',
+      textColor: text_color || ''
     };
   }
 

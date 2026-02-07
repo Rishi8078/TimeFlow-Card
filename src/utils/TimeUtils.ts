@@ -22,11 +22,11 @@ export const SECONDS_PER_DAY = 24 * SECONDS_PER_HOUR;      // 86,400
 // CSS/Style Constants
 // ============================================================================
 
-/** Default background color with HA theme fallbacks */
-export const DEFAULT_BACKGROUND = 'var(--ha-card-background, var(--ha-card-background-color, #1a1a1a))';
+/** Default background color - inherits from HA card theming */
+export const DEFAULT_BACKGROUND = 'var(--ha-card-background, var(--card-background-color, var(--secondary-background-color, transparent)))';
 
-/** Default text color with HA theme fallback */
-export const DEFAULT_TEXT_COLOR = 'var(--primary-text-color, #fff)';
+/** Default text color - inherits from HA theme */
+export const DEFAULT_TEXT_COLOR = 'var(--primary-text-color, inherit)';
 
 // ============================================================================
 // Time Units Interface

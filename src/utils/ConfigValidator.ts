@@ -224,7 +224,7 @@ export class ConfigValidator {
             break;
           case 'background_color':
             if (!this.isValidColorInput(safeConfig.background_color)) {
-              safeConfig.background_color = '#1a1a1a';
+              delete safeConfig.background_color;
             }
             break;
           case 'progress_color':
