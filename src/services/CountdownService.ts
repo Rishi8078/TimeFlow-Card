@@ -7,6 +7,7 @@ import {
   MS_PER_MINUTE, 
   MS_PER_HOUR, 
   MS_PER_DAY,
+  MS_PER_WEEK,
   SECONDS_PER_MINUTE,
   SECONDS_PER_HOUR,
   parseMillisecondsToUnits,
@@ -30,7 +31,7 @@ export class CountdownService {
   constructor(templateService: any, dateParser: any) {
     this.templateService = templateService;
     this.dateParser = dateParser;
-    this.timeRemaining = { months: 0, days: 0, hours: 0, minutes: 0, seconds: 0, total: 0 };
+    this.timeRemaining = { years: 0, months: 0, weeks: 0, days: 0, hours: 0, minutes: 0, seconds: 0, total: 0 };
     this.expired = false;
     this.lastAlexaTimerData = null;
   }
@@ -67,6 +68,36 @@ export class CountdownService {
     const remainingMs = targetDate.getTime() - tempDate.getTime();
 
     return { months, remainingMs };
+  }
+
+  /**
+   * Calculates precise calendar years between now and target date
+   * Returns the number of full calendar years and remaining milliseconds
+   * @param {Date} nowDate - Current date
+   * @param {Date} targetDate - Target date
+   * @returns {{ years: number, remainingMs: number }} - Calendar years and remaining time
+   */
+  private _calculateCalendarYears(nowDate: Date, targetDate: Date): { years: number; remainingMs: number } {
+    if (targetDate <= nowDate) {
+      return { years: 0, remainingMs: 0 };
+    }
+
+    let years = 0;
+    const tempDate = new Date(nowDate);
+
+    while (true) {
+      const nextYear = new Date(tempDate);
+      nextYear.setFullYear(nextYear.getFullYear() + 1);
+      if (nextYear <= targetDate) {
+        years++;
+        tempDate.setFullYear(tempDate.getFullYear() + 1);
+      } else {
+        break;
+      }
+    }
+
+    const remainingMs = targetDate.getTime() - tempDate.getTime();
+    return { years, remainingMs };
   }
 
   /**
@@ -162,7 +193,7 @@ export class CountdownService {
           }
           // No active or paused timers - clear state
           this.lastAlexaTimerData = null;
-          this.timeRemaining = { months: 0, days: 0, hours: 0, minutes: 0, seconds: 0, total: 0 };
+          this.timeRemaining = { years: 0, months: 0, weeks: 0, days: 0, hours: 0, minutes: 0, seconds: 0, total: 0 };
           this.expired = false;
           return this.timeRemaining;
         }
@@ -188,52 +219,82 @@ export class CountdownService {
 
       if (difference > 0) {
         // Calculate time units based on what's enabled - cascade disabled units into enabled ones
-        const { show_months, show_days, show_hours, show_minutes, show_seconds } = config;
+        const { show_years, show_months, show_weeks, show_days, show_hours, show_minutes, show_seconds } = config;
 
-        let months = 0, days = 0, hours = 0, minutes = 0, seconds = 0;
+        let years = 0, months = 0, weeks = 0, days = 0, hours = 0, minutes = 0, seconds = 0;
         let totalMilliseconds = difference;
+        const nowDate = new Date(now);
+        const targetDateObj = new Date(targetDate);
 
-        // Use calendar-based month calculation for precise results
+        // --- Calendar-based year calculation ---
+        if (show_years) {
+          const yearResult = this._calculateCalendarYears(nowDate, targetDateObj);
+          years = yearResult.years;
+          totalMilliseconds = yearResult.remainingMs;
+          // Advance nowDate by the calculated years for subsequent month calculation
+          nowDate.setFullYear(nowDate.getFullYear() + years);
+        }
+
+        // --- Calendar-based month calculation ---
         if (show_months) {
-          const nowDate = new Date(now);
-          const targetDateObj = new Date(targetDate);
           const calendarResult = this._calculateCalendarMonths(nowDate, targetDateObj);
           months = calendarResult.months;
           totalMilliseconds = calendarResult.remainingMs;
+        } else if (show_years && !show_months) {
+          // If months are disabled but years are enabled, absorb remaining months into years
+          // by recalculating from the year-advanced date
+          const additionalYears = this._calculateCalendarYears(nowDate, targetDateObj);
+          years += additionalYears.years;
+          totalMilliseconds = additionalYears.remainingMs;
+          nowDate.setFullYear(nowDate.getFullYear() + additionalYears.years);
         }
 
+        // --- Week calculation (simple ms-based) ---
+        if (show_weeks) {
+          weeks = Math.floor(totalMilliseconds / MS_PER_WEEK);
+          totalMilliseconds %= MS_PER_WEEK;
+        }
+
+        // --- Day calculation ---
         if (show_days) {
           days = Math.floor(totalMilliseconds / MS_PER_DAY);
           totalMilliseconds %= MS_PER_DAY;
-        } else if (show_months && !show_days) {
-          // If days are disabled but months are enabled, convert remaining days to additional months
-          // Use calendar logic: count how many more full months fit in the remaining time
-          const nowDate = new Date(now);
-          nowDate.setMonth(nowDate.getMonth() + months);
-          const targetDateObj = new Date(targetDate);
-          const additionalResult = this._calculateCalendarMonths(nowDate, targetDateObj);
-          months += additionalResult.months;
-          totalMilliseconds = additionalResult.remainingMs;
+        } else if ((show_years || show_months || show_weeks) && !show_days) {
+          // Days disabled: roll extra days into weeks if enabled, otherwise let them fall through
+          const extraDays = Math.floor(totalMilliseconds / MS_PER_DAY);
+          if (show_weeks) {
+            weeks += Math.floor(extraDays / 7);
+            totalMilliseconds -= Math.floor(extraDays / 7) * 7 * MS_PER_DAY;
+          }
+          // Remaining sub-day ms stay for hours/minutes/seconds
+          if (show_days) {
+            days = Math.floor(totalMilliseconds / MS_PER_DAY);
+            totalMilliseconds %= MS_PER_DAY;
+          }
         }
 
+        // --- Hour calculation ---
         if (show_hours) {
           hours = Math.floor(totalMilliseconds / MS_PER_HOUR);
           totalMilliseconds %= MS_PER_HOUR;
-        } else if ((show_months || show_days) && !show_hours) {
-          // If hours are disabled but larger units are enabled, add hours to the largest enabled unit
+        } else if ((show_years || show_months || show_weeks || show_days) && !show_hours) {
           const extraHours = Math.floor(totalMilliseconds / MS_PER_HOUR);
           if (show_days) {
             days += Math.floor(extraHours / 24);
+          } else if (show_weeks) {
+            // Roll hours into weeks via days
+            days += Math.floor(extraHours / 24);
+            weeks += Math.floor(days / 7);
+            days = days % 7;
           }
-          // Note: We don't add hours to months anymore since calendar months are precise
           totalMilliseconds %= MS_PER_HOUR;
         }
 
+        // --- Minute calculation ---
         if (show_minutes) {
           minutes = Math.floor(totalMilliseconds / MS_PER_MINUTE);
           totalMilliseconds %= MS_PER_MINUTE;
-        } else if ((show_months || show_days || show_hours) && !show_minutes) {
-          // If minutes are disabled but larger units are enabled, add minutes to the largest enabled unit
+        } else if ((show_years || show_months || show_weeks || show_days || show_hours) && !show_minutes) {
           const extraMinutes = Math.floor(totalMilliseconds / MS_PER_MINUTE);
           if (show_hours) {
             hours += Math.floor(extraMinutes / SECONDS_PER_MINUTE);
@@ -243,10 +304,10 @@ export class CountdownService {
           totalMilliseconds %= MS_PER_MINUTE;
         }
 
+        // --- Second calculation ---
         if (show_seconds) {
           seconds = Math.floor(totalMilliseconds / MS_PER_SECOND);
-        } else if ((show_months || show_days || show_hours || show_minutes) && !show_seconds) {
-          // If seconds are disabled but larger units are enabled, add seconds to the largest enabled unit
+        } else if ((show_years || show_months || show_weeks || show_days || show_hours || show_minutes) && !show_seconds) {
           const extraSeconds = Math.floor(totalMilliseconds / MS_PER_SECOND);
           if (show_minutes) {
             minutes += Math.floor(extraSeconds / SECONDS_PER_MINUTE);
@@ -257,10 +318,10 @@ export class CountdownService {
           }
         }
 
-        this.timeRemaining = { months, days, hours, minutes, seconds, total: difference };
+        this.timeRemaining = { years, months, weeks, days, hours, minutes, seconds, total: difference };
         this.expired = false;
       } else {
-        this.timeRemaining = { months: 0, days: 0, hours: 0, minutes: 0, seconds: 0, total: 0 };
+        this.timeRemaining = { years: 0, months: 0, weeks: 0, days: 0, hours: 0, minutes: 0, seconds: 0, total: 0 };
         this.expired = true;
       }
 
@@ -379,8 +440,8 @@ export class CountdownService {
       }
     }
 
-    const { show_months, show_days, show_hours, show_minutes, show_seconds } = config;
-    const { months, days, hours, minutes, seconds } = this.timeRemaining;
+    const { show_years, show_months, show_weeks, show_days, show_hours, show_minutes, show_seconds } = config;
+    const { years, months, weeks, days, hours, minutes, seconds } = this.timeRemaining;
 
     if (this.expired) {
       // For auto-discovered smart assistant timers, prefer timer-style expired text and cached label if available
@@ -394,8 +455,12 @@ export class CountdownService {
     }
 
     // Show the largest time unit that is enabled and has a value > 0
-    if (show_months && months > 0) {
+    if (show_years && years > 0) {
+      return { value: years.toString(), label: getUnitLabel('year', years, 'mainDisplay') };
+    } else if (show_months && months > 0) {
       return { value: months.toString(), label: getUnitLabel('month', months, 'mainDisplay') };
+    } else if (show_weeks && weeks > 0) {
+      return { value: weeks.toString(), label: getUnitLabel('week', weeks, 'mainDisplay') };
     } else if (show_days && days > 0) {
       return { value: days.toString(), label: getUnitLabel('day', days, 'mainDisplay') };
     } else if (show_hours && hours > 0) {
@@ -460,12 +525,14 @@ export class CountdownService {
       return expired_text;
     }
 
-    const { months, days, hours, minutes, seconds } = this.timeRemaining || { months: 0, days: 0, hours: 0, minutes: 0, seconds: 0 };
-    const { show_months, show_days, show_hours, show_minutes, show_seconds, compact_format, subtitle_prefix, subtitle_suffix } = config;
+    const { years, months, weeks, days, hours, minutes, seconds } = this.timeRemaining || { years: 0, months: 0, weeks: 0, days: 0, hours: 0, minutes: 0, seconds: 0 };
+    const { show_years, show_months, show_weeks, show_days, show_hours, show_minutes, show_seconds, compact_format, subtitle_prefix, subtitle_suffix } = config;
 
     const parts = [];
 
+    if (show_years && years > 0) parts.push({ value: years, unit: years === 1 ? t('time.year_full') : t('time.years_full') });
     if (show_months && months > 0) parts.push({ value: months, unit: months === 1 ? t('time.month_full') : t('time.months_full') });
+    if (show_weeks && weeks > 0) parts.push({ value: weeks, unit: weeks === 1 ? t('time.week_full') : t('time.weeks_full') });
     if (show_days && days > 0) parts.push({ value: days, unit: days === 1 ? t('time.day_full') : t('time.days_full') });
     if (show_hours && hours > 0) parts.push({ value: hours, unit: hours === 1 ? t('time.hour_full') : t('time.hours_full') });
     if (show_minutes && minutes > 0) parts.push({ value: minutes, unit: minutes === 1 ? t('time.minute_full') : t('time.minutes_full') });
@@ -523,7 +590,9 @@ export class CountdownService {
   private _timerDataToCountdownState(timerData: any): CountdownState {
     const units = parseSecondsToUnits(timerData.remaining);
     return {
+      years: 0,
       months: 0,
+      weeks: 0,
       days: units.days,
       hours: units.hours,
       minutes: units.minutes,

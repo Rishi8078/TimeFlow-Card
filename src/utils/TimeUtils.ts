@@ -12,6 +12,7 @@ export const MS_PER_SECOND = 1000;
 export const MS_PER_MINUTE = 60 * MS_PER_SECOND;      // 60,000
 export const MS_PER_HOUR = 60 * MS_PER_MINUTE;        // 3,600,000
 export const MS_PER_DAY = 24 * MS_PER_HOUR;           // 86,400,000
+export const MS_PER_WEEK = 7 * MS_PER_DAY;            // 604,800,000
 
 // Seconds-based constants (for timer calculations)
 export const SECONDS_PER_MINUTE = 60;
@@ -90,7 +91,9 @@ export function parseSecondsToUnits(totalSeconds: number): TimeUnits {
 export const TIME_UNIT_LABELS = {
   // Compact uppercase labels (for Eventy style)
   eventy: {
+    year: { singular: 'YEAR', plural: 'YEARS' },
     month: { singular: 'MONTH', plural: 'MONTHS' },
+    week: { singular: 'WEEK', plural: 'WEEKS' },
     day: { singular: 'DAY', plural: 'DAYS' },
     hour: { singular: 'HOUR', plural: 'HOURS' },
     minute: { singular: 'MIN', plural: 'MINS' },
@@ -98,7 +101,9 @@ export const TIME_UNIT_LABELS = {
   },
   // Standard labels with "left" suffix (for main display)
   mainDisplay: {
+    year: { singular: 'year left', plural: 'years left' },
     month: { singular: 'month left', plural: 'months left' },
+    week: { singular: 'week left', plural: 'weeks left' },
     day: { singular: 'day left', plural: 'days left' },
     hour: { singular: 'hour left', plural: 'hours left' },
     minute: { singular: 'minute left', plural: 'minutes left' },
@@ -106,7 +111,9 @@ export const TIME_UNIT_LABELS = {
   },
   // Standard labels without suffix (for timer displays)
   timer: {
+    year: { singular: 'year', plural: 'years' },
     month: { singular: 'month', plural: 'months' },
+    week: { singular: 'week', plural: 'weeks' },
     day: { singular: 'day', plural: 'days' },
     hour: { singular: 'hour', plural: 'hours' },
     minute: { singular: 'minute', plural: 'minutes' },
@@ -114,7 +121,7 @@ export const TIME_UNIT_LABELS = {
   },
 } as const;
 
-export type TimeUnitType = 'month' | 'day' | 'hour' | 'minute' | 'second';
+export type TimeUnitType = 'year' | 'month' | 'week' | 'day' | 'hour' | 'minute' | 'second';
 export type LabelStyle = keyof typeof TIME_UNIT_LABELS;
 
 /**
@@ -134,7 +141,9 @@ export function getUnitLabel(unit: TimeUnitType, value: number, style: LabelStyl
  * Maps unit type and plurality to the correct localization key
  */
 const EVENTY_TRANSLATION_KEYS: Record<TimeUnitType, { singular: string; plural: string }> = {
+  year: { singular: 'time.year_eventy', plural: 'time.years_eventy' },
   month: { singular: 'time.month_eventy', plural: 'time.months_eventy' },
+  week: { singular: 'time.week_eventy', plural: 'time.weeks_eventy' },
   day: { singular: 'time.day_eventy', plural: 'time.days_eventy' },
   hour: { singular: 'time.hour_eventy', plural: 'time.hours_eventy' },
   minute: { singular: 'time.minute_eventy', plural: 'time.minutes_eventy' },

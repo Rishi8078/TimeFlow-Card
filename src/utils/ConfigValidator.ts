@@ -140,7 +140,7 @@ export class ConfigValidator {
     }
     
     // Validate boolean fields
-    const booleanFields = ['show_months', 'show_days', 'show_hours', 'show_minutes', 'show_seconds', 'expired_animation', 'show_progress_text'];
+    const booleanFields = ['show_years', 'show_months', 'show_weeks', 'show_days', 'show_hours', 'show_minutes', 'show_seconds', 'expired_animation', 'show_progress_text'];
     booleanFields.forEach(field => {
       if (config[field] !== undefined && !this.isValidBooleanInput(config[field])) {
         errors.push({

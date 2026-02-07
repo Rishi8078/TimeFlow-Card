@@ -26,7 +26,9 @@ export class TimeFlowCard extends LitElement {
   @state() private _resolvedConfig: CardConfig = TimeFlowCard.getStubConfig();
   @state() private _progress: number = 0;
   @state() private _countdown: CountdownState = {
+    years: 0,
     months: 0,
+    weeks: 0,
     days: 0,
     hours: 0,
     minutes: 0,
@@ -386,6 +388,8 @@ export class TimeFlowCard extends LitElement {
       creation_date: '2025-12-31T23:59:59',
       timer_entity: '',
       title: 'New Year Countdown',
+      show_years: false,
+      show_weeks: false,
       show_days: true,
       show_hours: true,
       show_minutes: true,
@@ -635,7 +639,7 @@ export class TimeFlowCard extends LitElement {
     } = this._resolvedConfig;
 
     // Compute effective compact_format state
-    const enabledUnits = [show_months, show_days, show_hours, show_minutes, show_seconds].filter(v => v === true).length;
+    const enabledUnits = [this._resolvedConfig.show_years, show_months, this._resolvedConfig.show_weeks, show_days, show_hours, show_minutes, show_seconds].filter(v => v === true).length;
     const useCompact = compact_format === true || (compact_format !== false && enabledUnits >= 3);
 
     // Get card colors using helper
@@ -949,13 +953,19 @@ export class TimeFlowCard extends LitElement {
    * Supports localization for multi-language displays
    */
   private _getPrimaryCountdownUnit(): { primaryValue: number; primaryUnit: string } {
-    const { months, days, hours, minutes, seconds, total } = this._countdown;
-    const { show_months, show_days, show_hours, show_minutes, show_seconds } = this._resolvedConfig;
+    const { years, months, weeks, days, hours, minutes, seconds, total } = this._countdown;
+    const { show_years, show_months, show_weeks, show_days, show_hours, show_minutes, show_seconds } = this._resolvedConfig;
     const t = this._localize || undefined;
 
     // First, try to return an enabled unit that has a non-zero value
+    if (show_years !== false && years > 0) {
+      return { primaryValue: years, primaryUnit: getLocalizedEventyLabel('year', years, t) };
+    }
     if (show_months !== false && months > 0) {
       return { primaryValue: months, primaryUnit: getLocalizedEventyLabel('month', months, t) };
+    }
+    if (show_weeks !== false && weeks > 0) {
+      return { primaryValue: weeks, primaryUnit: getLocalizedEventyLabel('week', weeks, t) };
     }
     if (show_days !== false && days > 0) {
       // Calculate total days including months if months are hidden

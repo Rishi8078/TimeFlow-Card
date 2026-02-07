@@ -55,7 +55,9 @@ export const subscribeRenderTemplate = (
 export type { UnsubscribeFunc };
 
 export interface CountdownState {
+  years: number;
   months: number;
+  weeks: number;
   days: number;
   hours: number;
   minutes: number;
@@ -129,7 +131,9 @@ export interface CardConfig {
   header_icon_background?: string; // Icon background color (e.g., "rgba(59, 130, 246, 0.2)")
 
   // Time unit visibility
+  show_years?: boolean;
   show_months?: boolean;
+  show_weeks?: boolean;
   show_days?: boolean;
   show_hours?: boolean;
   show_minutes?: boolean;

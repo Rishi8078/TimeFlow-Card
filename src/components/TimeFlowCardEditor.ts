@@ -213,6 +213,8 @@ export class TimeFlowCardEditor extends LitElement {
             'show_minutes': 'Minutes',
             'show_seconds': 'Seconds',
             'show_months': 'Months',
+            'show_years': 'Years',
+            'show_weeks': 'Weeks',
             'compact_format': 'Compact Format',
             'subtitle_prefix': 'Subtitle Prefix',
             'subtitle_suffix': 'Subtitle Suffix',
@@ -304,7 +306,7 @@ export class TimeFlowCardEditor extends LitElement {
      * Auto-enables when 3+ units are selected (unless explicitly disabled)
      */
     private _getEffectiveCompactFormat(): boolean {
-        const { show_months, show_days, show_hours, show_minutes, show_seconds, compact_format } = this._config;
+        const { show_years, show_months, show_weeks, show_days, show_hours, show_minutes, show_seconds, compact_format } = this._config;
 
         // If explicitly set, use that value
         if (compact_format !== undefined) {
@@ -312,7 +314,7 @@ export class TimeFlowCardEditor extends LitElement {
         }
 
         // Otherwise, auto-enable if 3+ units are shown
-        const enabledUnits = [show_months, show_days, show_hours, show_minutes, show_seconds].filter(v => v === true).length;
+        const enabledUnits = [show_years, show_months, show_weeks, show_days, show_hours, show_minutes, show_seconds].filter(v => v === true).length;
         return enabledUnits >= 3;
     }
 
@@ -397,7 +399,9 @@ export class TimeFlowCardEditor extends LitElement {
             {
                 type: 'grid',
                 schema: [
+                    { name: 'show_years', selector: { boolean: {} } },
                     { name: 'show_months', selector: { boolean: {} } },
+                    { name: 'show_weeks', selector: { boolean: {} } },
                     { name: 'show_days', selector: { boolean: {} } },
                     { name: 'show_hours', selector: { boolean: {} } },
                     { name: 'show_minutes', selector: { boolean: {} } },
