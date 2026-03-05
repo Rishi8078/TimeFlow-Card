@@ -183,6 +183,8 @@ export class TimeFlowCardEditor extends LitElement {
             // Progress Circle
             'stroke_width': 'Thickness of the progress circle ring',
             'icon_size': 'Size of the progress circle',
+            'progress_bg_stroke': 'Background circle stroke color (e.g., "#515751", "rgba(81, 87, 81, 0.2)")',
+            'progress_bg_opacity': 'Background circle opacity as percentage (0-100)',
 
             // Header Icon
             'header_icon': 'Material Design icon name (e.g., "mdi:cake-variant")',
@@ -225,6 +227,8 @@ export class TimeFlowCardEditor extends LitElement {
             'text_color': 'Text Color',
             'stroke_width': 'Stroke Width',
             'icon_size': 'Circle Size',
+            'progress_bg_stroke': 'Background Stroke Color',
+            'progress_bg_opacity': 'Background Opacity',
             'aspect_ratio': 'Aspect Ratio',
             'header_icon': 'Header Icon',
             'header_icon_color': 'Icon Color',
@@ -459,6 +463,8 @@ export class TimeFlowCardEditor extends LitElement {
                             { name: 'icon_size', selector: { number: { min: 10, max: 350, step: 5 } } },
                         ]
                     },
+                    { name: 'progress_bg_stroke', selector: { text: {} } },
+                    { name: 'progress_bg_opacity', selector: { number: { min: 0, max: 100, step: 5 } } },
                 ]
             },
 

@@ -156,6 +156,10 @@ export interface CardConfig {
   stroke_width?: number;
   icon_size?: number;
 
+  // Progress circle background styling
+  progress_bg_stroke?: string;    // Background circle stroke color (e.g., "#515751")
+  progress_bg_opacity?: number;   // Background circle opacity (0-100, e.g., 10 for 10%)
+
   // Card dimensions
   width?: string | number;
   height?: string | number;

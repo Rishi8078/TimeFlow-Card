@@ -749,6 +749,8 @@ export class TimeFlowCard extends LitElement {
                 .color="${mainProgressColor}"
                 .size="${dynamicCircleSize}"
                 .strokeWidth="${dynamicStroke}"
+                .bgStroke="${this._resolvedConfig.progress_bg_stroke || '#FFFFFF1A'}"
+                .bgOpacity="${this._resolvedConfig.progress_bg_opacity ?? null}"
                 aria-label="Countdown progress: ${Math.round(this._progress)}%"
               ></progress-circle>
             </div>
@@ -938,6 +940,8 @@ export class TimeFlowCard extends LitElement {
               .color="${mainProgressColor}"
               .size="${compactCircleSize}"
               .strokeWidth="${compactStroke}"
+              .bgStroke="${this._resolvedConfig.progress_bg_stroke || '#FFFFFF1A'}"
+              .bgOpacity="${this._resolvedConfig.progress_bg_opacity ?? null}"
               aria-label="Countdown progress: ${Math.round(this._progress)}%"
             ></progress-circle>
           </div>

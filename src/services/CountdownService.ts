@@ -280,7 +280,7 @@ export class CountdownService {
         } else if ((show_years || show_months || show_weeks || show_days) && !show_hours) {
           const extraHours = Math.floor(totalMilliseconds / MS_PER_HOUR);
           if (show_days) {
-            days += Math.floor(extraHours / 24);
+            days += Math.ceil(extraHours / 24);
           } else if (show_weeks) {
             // Roll hours into weeks via days
             days += Math.floor(extraHours / 24);
@@ -299,7 +299,7 @@ export class CountdownService {
           if (show_hours) {
             hours += Math.floor(extraMinutes / SECONDS_PER_MINUTE);
           } else if (show_days) {
-            days += Math.floor(extraMinutes / (SECONDS_PER_MINUTE * 24));
+            days += Math.ceil(extraMinutes / (SECONDS_PER_MINUTE * 24));
           }
           totalMilliseconds %= MS_PER_MINUTE;
         }
@@ -314,7 +314,7 @@ export class CountdownService {
           } else if (show_hours) {
             hours += Math.floor(extraSeconds / SECONDS_PER_HOUR);
           } else if (show_days) {
-            days += Math.floor(extraSeconds / (SECONDS_PER_HOUR * 24));
+            days += Math.ceil(extraSeconds / (SECONDS_PER_HOUR * 24));
           }
         }
 

@@ -7,6 +7,8 @@ export class ProgressCircle extends LitElement {
   @property({ type: String }) color: string = '#4CAF50';
   @property({ type: Number }) size: number = 100;
   @property({ type: Number }) strokeWidth: number = 15;
+  @property({ type: String }) bgStroke: string = '#FFFFFF1A';  // Background circle stroke color
+  @property({ type: Number }) bgOpacity: number | null = null;  // Background circle opacity (0-100)
 
   static get styles(): CSSResult {
     return css`
@@ -33,6 +35,8 @@ export class ProgressCircle extends LitElement {
     this.color = '#4CAF50';
     this.size = 100;
     this.strokeWidth = 15;
+    this.bgStroke = '#FFFFFF1A';
+    this.bgOpacity = null;
   }
 
   updated(changed: PropertyValues): void {
@@ -73,6 +77,9 @@ export class ProgressCircle extends LitElement {
     const circumference = 2 * Math.PI * radius;
     const offset = circumference - (safeProgress / 100) * circumference;
 
+    // Compute background circle styles
+    const bgStyle = this.bgOpacity !== null ? `filter: opacity(${this.bgOpacity}%)` : '';
+
     return html`
       <div class="progress-wrapper" style="width:${size}px; height:${size}px;">
         <svg
@@ -85,8 +92,9 @@ export class ProgressCircle extends LitElement {
             cx="${size / 2}" cy="${size / 2}"
             r="${radius}"
             fill="none"
-            stroke="#FFFFFF1A"
+            stroke="${this.bgStroke}"
             stroke-width="${stroke}"
+            style="${bgStyle}"
           ></circle>
           <circle
             class="progress-bar"
