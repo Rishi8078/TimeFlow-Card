@@ -159,6 +159,7 @@ export interface CardConfig {
   // Progress circle background styling
   progress_bg_stroke?: string;    // Background circle stroke color (e.g., "#515751")
   progress_bg_opacity?: number;   // Background circle opacity (0-100, e.g., 10 for 10%)
+  invert_progress?: boolean;      // Reverse the progress circle direction (full to empty)
 
   // Card dimensions
   width?: string | number;
