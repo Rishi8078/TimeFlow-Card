@@ -2,7 +2,7 @@
 
 ![TimeFlow Card Preview](assets/thumbnail.png)
 
-A beautiful, highly customizable countdown timer card for Home Assistant. Track your next trip, a loved one’s birthday, or an important deadline and always know exactly how much time is left. Now with built-in support for timers and Jinja2 templates.
+A beautiful, highly customizable time card for Home Assistant. Use it as a countdown to an upcoming date, a count-up timer since a past event, or a live view of Home Assistant, Alexa, and Google Home timers. It includes multiple layouts, progress-circle options, a visual editor, and built-in Jinja2 template support.
 
 [![Home Assistant][ha_badge]][ha_link] [![HACS][hacs_badge]][hacs_link] [![GitHub Release][release_badge]][release] [![Buy Me A Coffee][bmac_badge]][bmac] ![downloads]
 
@@ -35,37 +35,127 @@ A beautiful, highly customizable countdown timer card for Home Assistant. Track 
 
 ## Configuration
 
-This card offers a wide range of options to customize its appearance and behavior. You can find more details and the YAML in the documentation below.
+This card offers a wide range of options to customize its appearance and behavior. `target_date` is the primary date field:
+
+- In `mode: count_down`, `target_date` is the end date.
+- In `mode: count_up`, `target_date` is the start or "since" date.
+
+If `timer_entity` or smart-timer auto-discovery is used, timer data takes priority over date-based calculations.
 
 | Option | Type | Default | Description |
 | :-- | :-- | :-- | :-- |
-| `target_date` | string | `null` | Countdown target. Can be ISO date string, Home Assistant entity ID, or a template. |
-| `creation_date` | string | `null` | Start date for progress calculation. ISO date, entity ID, or template. |
-| `timer_entity` | string | `null` | Home Assistant `timer` entity. Overrides `target_date`. |
-| `auto_discover_alexa` | boolean | `false` | Automatically discover Alexa timer entities (Alexa-media-player integration). |
-| `auto_discover_google` | boolean | `false` | Automatically discover Google Home timer entities (ha-google-home integration). |
-| `compact_format` | boolean | `false` | Use compact subtitle/unit formatting (auto-enabled when many units shown). |
-| `title` | string | `"Countdown Timer"` | Main title of the card. Supports templates. |
-| `subtitle` | string | `null` | Subtitle for the card. Supports templates. |
-| `expired_text` | string | `"Completed!"` | Text shown when countdown finishes. |
-| `expired_animation` | boolean | `false` | Enables celebration animation when timer expires. |
-| `show_months` | boolean | `true` | Show months unit. |
-| `show_days` | boolean | `true` | Show days unit. |
-| `show_hours` | boolean | `true` | Show hours unit. |
-| `show_minutes` | boolean | `true` | Show minutes unit. |
-| `show_seconds` | boolean | `true` | Show seconds unit. |
-| `width` / `height` | string | `null` | Fixed card dimensions (e.g., `"200px"`, `"100%"`). |
-| `aspect_ratio` | string | `"2/1"` | Aspect ratio for responsive sizing (e.g., `"1/1"`, `"16/9"`). |
-| `text_color` | string | `"#FCFCFC"` | Primary text color. Supports templates. |
-| `background_color` | string | `"#000001"` | Card background color. Supports templates. |
-| `progress_color` | string | `"#C366CD"` | Progress bar color. Supports templates. |
-| `icon_size` | string | `"100px"` | Progress circle size. Auto-scales by default. |
-| `stroke_width` | number | `15` | Thickness of progress circle stroke. |
+| `style` | string | `classic` | Card layout: `classic`, `eventy`, or `classic-compact`. |
+| `mode` | string | `count_down` | Time mode: `count_down` or `count_up`. |
+| `target_date` | string | `null` | Main date field. In count-down mode this is the target date. In count-up mode this is the start date. Supports ISO strings, entity IDs, and templates. |
+| `creation_date` | string | `null` | Optional start date for count-down progress calculations. Supports ISO strings, entity IDs, and templates. |
+| `count_up_goal_date` | string | `null` | Optional goal/end date for count-up progress. Supports ISO strings, entity IDs, and templates. |
+| `count_up_cycle` | string / number | `null` | Optional repeating count-up cycle such as `30d`, `12h`, `24:00:00`, or raw seconds. Supports templates. |
+| `timer_entity` | string | `null` | Home Assistant `timer`, `sensor`, or `input_datetime` entity. Overrides date-based display logic. |
+| `auto_discover_alexa` | boolean | `false` | Automatically discover Alexa timer entities from the Alexa Media Player integration. |
+| `auto_discover_google` | boolean | `false` | Automatically discover Google Home timer entities from the HA Google Home integration. |
+| `title` | string | auto | Card title. Falls back to an automatic title when omitted. Supports templates. |
+| `subtitle` | string | `null` | Optional subtitle override. Supports templates. |
+| `subtitle_prefix` | string | `null` | Text prepended to the generated subtitle, such as `in` or `Only`. |
+| `subtitle_suffix` | string | `null` | Text appended to the generated subtitle, such as `left` or `elapsed`. |
+| `header_icon` | string | `null` | Optional Material Design icon shown next to the title in all styles. |
+| `header_icon_color` | string | `null` | Optional header icon color. Supports templates. |
+| `header_icon_background` | string | `null` | Optional background color behind the header icon. Supports templates. |
+| `show_years` | boolean | `false` | Show years in the elapsed or remaining time output. |
+| `show_months` | boolean | `false` | Show months in the elapsed or remaining time output. |
+| `show_weeks` | boolean | `false` | Show weeks in the elapsed or remaining time output. |
+| `show_days` | boolean | `true` | Show days in the elapsed or remaining time output. |
+| `show_hours` | boolean | `true` | Show hours in the elapsed or remaining time output. |
+| `show_minutes` | boolean | `true` | Show minutes in the elapsed or remaining time output. |
+| `show_seconds` | boolean | `true` | Show seconds in the elapsed or remaining time output. |
+| `compact_format` | boolean | auto | Use compact unit formatting such as `2d 5h 30m`. When unset, compact formatting is auto-enabled when 3 or more units are shown. |
+| `text_color` | string | theme | Primary text color. Supports templates. |
+| `background_color` | string | theme | Card background color. Supports templates. |
+| `progress_color` | string | theme | Progress-circle color. Supports templates. |
+| `icon_size` | number | `100` | Base progress circle size in pixels. Auto-scales with the card dimensions. |
+| `stroke_width` | number | `15` | Thickness of the progress circle stroke. |
+| `progress_bg_stroke` | string | `#FFFFFF1A` | Background track color for the progress circle. |
+| `progress_bg_opacity` | number | theme | Background track opacity percentage from `0` to `100`. |
+| `invert_progress` | boolean | `false` | Start the progress circle full and subtract from it instead of filling it up. |
+| `width` / `height` | string / number | `null` | Fixed card dimensions, for example `"200px"`, `"100%"`, or `180`. |
+| `aspect_ratio` | string | `null` | Aspect ratio for responsive sizing, for example `"1/1"` or `"16/9"`. |
+| `expired_text` | string | localized | Text shown when a countdown completes. Supports templates. |
+| `expired_animation` | boolean | `true` | Enables the celebration animation when a countdown expires. |
+| `tap_action` | object | auto | Tap action for the card. Timer entities default to `more-info` when no tap action is set. |
+| `hold_action` | object | `null` | Hold action for the card. |
+| `double_tap_action` | object | `null` | Double-tap action for the card. |
 | `card_mod` | object | `null` | Advanced styling via [card-mod](https://github.com/thomasloven/lovelace-card-mod) integration. |
 
 
 ## Examples
 ![TimeFlow Card Showcase](assets/Showcase.png)
+
+### 🏠 Count-Up Since Move-In
+
+Track elapsed time since a past event using `mode: count_up`. This example uses the `classic-compact` layout, an optional header icon, an inverted progress ring, and a `count_up_goal_date` so the circle has a meaningful end point. If you prefer a repeating ring instead, replace `count_up_goal_date` with `count_up_cycle: 30d`.
+
+<details>
+<summary>View YAML</summary>
+
+```yaml
+type: custom:timeflow-card
+style: classic-compact
+mode: count_up
+title: Time Since Move-In
+subtitle_suffix: lived here
+target_date: "2025-06-01T10:30:00"
+count_up_goal_date: "2026-06-01T10:30:00"
+show_years: false
+show_months: false
+show_weeks: false
+show_days: true
+show_hours: true
+show_minutes: true
+show_seconds: false
+header_icon: mdi:home-heart
+header_icon_color: "#6E4B2F"
+header_icon_background: "rgba(110, 75, 47, 0.12)"
+background_color: "#FFF8F1"
+text_color: "#4A3828"
+progress_color: "#C77D4E"
+progress_bg_stroke: "#E8D6C5"
+progress_bg_opacity: 100
+invert_progress: true
+stroke_width: 10
+```
+
+</details>
+
+-----
+
+### 🗂️ Eventy Style 
+
+The `eventy` layout is the most compact style and now works cleanly with or without a header icon. If no `header_icon` is provided, the title shifts over automatically and the layout stays aligned.
+
+<details>
+<summary>View YAML</summary>
+
+```yaml
+type: custom:timeflow-card
+style: eventy
+title: Next Bin Collection
+target_date: sensor.next_bin_collection
+show_years: false
+show_months: false
+show_weeks: false
+show_days: true
+show_hours: false
+show_minutes: false
+show_seconds: false
+background_color: "#F3F7F2"
+text_color: "#243026"
+progress_color: "#5E8C61"
+expired_animation: false
+```
+
+</details>
+
+-----
+
 ### 🗓️ Daily Agenda Countdown
 
 ![calendar](assets/calendar.png)
@@ -472,7 +562,7 @@ columns: 2
 
 ## Styling 
 
-For full control over every element of the card, the [card-mod](https://github.com/thomasloven/lovelace-card-mod) integration is the recommended approach. It allows you to write custom CSS to override the default styles of the card and its sub-components.
+For most setups, start with the built-in options such as `style`, `background_color`, `text_color`, `progress_color`, `progress_bg_stroke`, `progress_bg_opacity`, `header_icon`, and `invert_progress`. For full control over every element of the card, the [card-mod](https://github.com/thomasloven/lovelace-card-mod) integration is the recommended approach. It lets you write custom CSS to override the default styles of the card and its sub-components.
 
 ### Card Elements
 
@@ -486,9 +576,18 @@ This table includes the primary structural elements you can target with CSS sele
 | **Title Section** | `.title-section` | Add a `border` around the title/subtitle area or change its `gap`. |
 | **Title** | `.title` | Adjust `font-size`, `color`, `font-weight`, and `line-height`. |
 | **Subtitle**| `.subtitle` | Modify `font-size`, `color`, `opacity`, and `font-style` (e.g., italic). |
+| **Header Icon** | `.header-icon` | Change icon container `background`, `border-radius`, `padding`, or size variables. |
 | **Content Area**| `.content` | Change the alignment (`align-items`, `justify-content`) of the progress circle area. |
 | **Progress Section**| `.progress-section` | Adjust margins or positioning of the progress circle container. |
 | **Progress Circle**| `.progress-circle` | Apply a `filter` like `drop-shadow` or adjust its `opacity`. |
+| **Eventy Layout** | `.card-content-list` | Adjust the compact grid, padding, and spacing for the `eventy` style. |
+| **Eventy Icon** | `.list-icon` | Customize the optional compact icon in the `eventy` style. |
+| **Eventy Text** | `.list-title-section`, `.list-title`, `.list-subtitle` | Style the title and subtitle block for the `eventy` layout. |
+| **Eventy Countdown** | `.list-countdown`, `.list-countdown-value`, `.list-countdown-unit` | Control the prominent value and unit shown on the right side of the `eventy` layout. |
+| **Classic Compact Layout** | `.card-content-compact` | Adjust the grid, padding, and spacing for the `classic-compact` style. |
+| **Classic Compact Icon** | `.compact-icon` | Customize the optional icon in the `classic-compact` style. |
+| **Classic Compact Text** | `.compact-title-section`, `.compact-title`, `.compact-subtitle` | Style the title and subtitle block for the compact circle layout. |
+| **Classic Compact Progress** | `.compact-progress` | Reposition or size the progress circle in the `classic-compact` layout. |
 
 
 > [!IMPORTANT]  
@@ -571,19 +670,14 @@ card_mod:
 
 <details>
 
-<summary>Changing the background stroke color of a progress circle element for lighter color cards</summary>
+<summary>Changing the progress track color with built-in options</summary>
 
 ![sts](assets/stroke.png)
 <br>
 
 ```yaml
-card_mod:
-  style:
-    .: |
-    progress-circle$: |
-      .progress-bg {
-        stroke: #E5E6EA;
-      }
+progress_bg_stroke: "#E5E6EA"
+progress_bg_opacity: 100
 ```
 
 </details>
@@ -655,10 +749,16 @@ Templates can be used in the following properties for dynamic content:
   - `subtitle`
   - `target_date`
   - `creation_date`
+  - `count_up_goal_date`
+  - `count_up_cycle`
+  - `timer_entity`
   - `text_color`
   - `background_color`
   - `progress_color`
   - `expired_text`
+  - `header_icon`
+  - `header_icon_color`
+  - `header_icon_background`
 
 #### Example
 
