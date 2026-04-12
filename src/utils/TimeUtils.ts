@@ -80,6 +80,73 @@ export function parseSecondsToUnits(totalSeconds: number): TimeUnits {
   return { days, hours, minutes, seconds };
 }
 
+/**
+ * Parses a flexible duration input into milliseconds.
+ * Supports:
+ * - numbers as seconds
+ * - HH:MM:SS or MM:SS strings
+ * - compact unit strings like "30d", "12h", "90m", "1w 2d 3h"
+ *
+ * @param value - Duration input
+ * @returns Duration in milliseconds, or 0 when invalid
+ */
+export function parseDurationInputToMilliseconds(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    return value * MS_PER_SECOND;
+  }
+
+  if (typeof value !== 'string') {
+    return 0;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return 0;
+  }
+
+  if (trimmed.includes(':')) {
+    const parts = trimmed.split(':').map(Number);
+    if (parts.some(part => Number.isNaN(part) || part < 0)) {
+      return 0;
+    }
+
+    if (parts.length === 3) {
+      return ((parts[0] * 3600) + (parts[1] * 60) + parts[2]) * MS_PER_SECOND;
+    }
+
+    if (parts.length === 2) {
+      return ((parts[0] * 60) + parts[1]) * MS_PER_SECOND;
+    }
+  }
+
+  if (/^\d+(\.\d+)?$/.test(trimmed)) {
+    return parseFloat(trimmed) * MS_PER_SECOND;
+  }
+
+  const normalized = trimmed.toLowerCase();
+  const matches = [...normalized.matchAll(/(\d+(?:\.\d+)?)\s*(w|d|h|m|s)\b/g)];
+  if (matches.length === 0) {
+    return 0;
+  }
+
+  const matchedText = matches.map(match => match[0]).join('').replace(/\s+/g, '');
+  if (matchedText !== normalized.replace(/\s+/g, '')) {
+    return 0;
+  }
+
+  const unitToMs: Record<string, number> = {
+    w: MS_PER_WEEK,
+    d: MS_PER_DAY,
+    h: MS_PER_HOUR,
+    m: MS_PER_MINUTE,
+    s: MS_PER_SECOND,
+  };
+
+  return matches.reduce((total, [, amount, unit]) => {
+    return total + (parseFloat(amount) * unitToMs[unit]);
+  }, 0);
+}
+
 // ============================================================================
 // Singular/Plural Label Utilities
 // ============================================================================

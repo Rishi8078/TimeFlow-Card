@@ -101,16 +101,20 @@ export interface ActionHandlerEvent extends Event {
 
 // Card style options
 export type CardStyle = 'classic' | 'eventy' | 'classic-compact';
+export type CardMode = 'count_down' | 'count_up';
 
 export interface CardConfig {
   type: string;
 
   // Card style
   style?: CardStyle;  // 'classic' = circle progress, 'eventy' = compact horizontal, 'classic-compact' = horizontal with circle
+  mode?: CardMode;    // 'count_down' = time remaining, 'count_up' = time elapsed since the configured date
 
   // Basic countdown configuration
-  target_date?: string;
-  creation_date?: string;
+  target_date?: string;          // Count down: target/end date. Count up: start/since date.
+  creation_date?: string;        // Optional progress start date for count-down mode
+  count_up_goal_date?: string;   // Optional goal/end date for count-up progress
+  count_up_cycle?: string | number; // Optional repeating cycle length for count-up progress (e.g. "30d", "12:00:00", 86400)
 
   // Timer entity configuration (enhanced for Alexa and Google Home)
   timer_entity?: string;

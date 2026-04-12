@@ -11,6 +11,7 @@ import {
   SECONDS_PER_MINUTE,
   SECONDS_PER_HOUR,
   parseMillisecondsToUnits,
+  parseDurationInputToMilliseconds,
   parseSecondsToUnits,
   getUnitLabel
 } from '../utils/TimeUtils';
@@ -34,6 +35,109 @@ export class CountdownService {
     this.timeRemaining = { years: 0, months: 0, weeks: 0, days: 0, hours: 0, minutes: 0, seconds: 0, total: 0 };
     this.expired = false;
     this.lastAlexaTimerData = null;
+  }
+
+  private _getMode(config: CardConfig): 'count_down' | 'count_up' {
+    return config.mode === 'count_up' ? 'count_up' : 'count_down';
+  }
+
+  private _buildZeroState(): CountdownState {
+    return { years: 0, months: 0, weeks: 0, days: 0, hours: 0, minutes: 0, seconds: 0, total: 0 };
+  }
+
+  private _calculateRangeState(
+    startTimestamp: number,
+    endTimestamp: number,
+    config: CardConfig,
+    roundUpHiddenUnits: boolean
+  ): CountdownState {
+    if (endTimestamp <= startTimestamp) {
+      return this._buildZeroState();
+    }
+
+    const { show_years, show_months, show_weeks, show_days, show_hours, show_minutes, show_seconds } = config;
+
+    let years = 0, months = 0, weeks = 0, days = 0, hours = 0, minutes = 0, seconds = 0;
+    let totalMilliseconds = endTimestamp - startTimestamp;
+    const rangeStart = new Date(startTimestamp);
+    const rangeEnd = new Date(endTimestamp);
+
+    if (show_years) {
+      const yearResult = this._calculateCalendarYears(rangeStart, rangeEnd);
+      years = yearResult.years;
+      totalMilliseconds = yearResult.remainingMs;
+      rangeStart.setFullYear(rangeStart.getFullYear() + years);
+    }
+
+    if (show_months) {
+      const calendarResult = this._calculateCalendarMonths(rangeStart, rangeEnd);
+      months = calendarResult.months;
+      totalMilliseconds = calendarResult.remainingMs;
+    } else if (show_years && !show_months) {
+      const additionalYears = this._calculateCalendarYears(rangeStart, rangeEnd);
+      years += additionalYears.years;
+      totalMilliseconds = additionalYears.remainingMs;
+      rangeStart.setFullYear(rangeStart.getFullYear() + additionalYears.years);
+    }
+
+    if (show_weeks) {
+      weeks = Math.floor(totalMilliseconds / MS_PER_WEEK);
+      totalMilliseconds %= MS_PER_WEEK;
+    }
+
+    if (show_days) {
+      days = Math.floor(totalMilliseconds / MS_PER_DAY);
+      totalMilliseconds %= MS_PER_DAY;
+    } else if ((show_years || show_months || show_weeks) && !show_days) {
+      const extraDays = Math.floor(totalMilliseconds / MS_PER_DAY);
+      if (show_weeks) {
+        weeks += Math.floor(extraDays / 7);
+        totalMilliseconds -= Math.floor(extraDays / 7) * 7 * MS_PER_DAY;
+      }
+    }
+
+    if (show_hours) {
+      hours = Math.floor(totalMilliseconds / MS_PER_HOUR);
+      totalMilliseconds %= MS_PER_HOUR;
+    } else if ((show_years || show_months || show_weeks || show_days) && !show_hours) {
+      const extraHours = Math.floor(totalMilliseconds / MS_PER_HOUR);
+      if (show_days) {
+        days += roundUpHiddenUnits ? Math.ceil(extraHours / 24) : Math.floor(extraHours / 24);
+      } else if (show_weeks) {
+        days += Math.floor(extraHours / 24);
+        weeks += Math.floor(days / 7);
+        days = days % 7;
+      }
+      totalMilliseconds %= MS_PER_HOUR;
+    }
+
+    if (show_minutes) {
+      minutes = Math.floor(totalMilliseconds / MS_PER_MINUTE);
+      totalMilliseconds %= MS_PER_MINUTE;
+    } else if ((show_years || show_months || show_weeks || show_days || show_hours) && !show_minutes) {
+      const extraMinutes = Math.floor(totalMilliseconds / MS_PER_MINUTE);
+      if (show_hours) {
+        hours += Math.floor(extraMinutes / SECONDS_PER_MINUTE);
+      } else if (show_days) {
+        days += roundUpHiddenUnits ? Math.ceil(extraMinutes / (SECONDS_PER_MINUTE * 24)) : Math.floor(extraMinutes / (SECONDS_PER_MINUTE * 24));
+      }
+      totalMilliseconds %= MS_PER_MINUTE;
+    }
+
+    if (show_seconds) {
+      seconds = Math.floor(totalMilliseconds / MS_PER_SECOND);
+    } else if ((show_years || show_months || show_weeks || show_days || show_hours || show_minutes) && !show_seconds) {
+      const extraSeconds = Math.floor(totalMilliseconds / MS_PER_SECOND);
+      if (show_minutes) {
+        minutes += Math.floor(extraSeconds / SECONDS_PER_MINUTE);
+      } else if (show_hours) {
+        hours += Math.floor(extraSeconds / SECONDS_PER_HOUR);
+      } else if (show_days) {
+        days += roundUpHiddenUnits ? Math.ceil(extraSeconds / (SECONDS_PER_HOUR * 24)) : Math.floor(extraSeconds / (SECONDS_PER_HOUR * 24));
+      }
+    }
+
+    return { years, months, weeks, days, hours, minutes, seconds, total: endTimestamp - startTimestamp };
   }
 
   /**
@@ -161,6 +265,8 @@ export class CountdownService {
    */
   async updateCountdown(config: CardConfig, hass: HomeAssistant | null): Promise<CountdownState> {
     try {
+      const mode = this._getMode(config);
+
       // TIMER ENTITY SUPPORT (including Alexa timers)
       if (config.timer_entity && hass) {
         const timerData = TimerEntityService.getTimerData(config.timer_entity, hass);
@@ -215,113 +321,16 @@ export class CountdownService {
         return this.timeRemaining;
       }
 
-      const difference = targetDate - now;
-
-      if (difference > 0) {
-        // Calculate time units based on what's enabled - cascade disabled units into enabled ones
-        const { show_years, show_months, show_weeks, show_days, show_hours, show_minutes, show_seconds } = config;
-
-        let years = 0, months = 0, weeks = 0, days = 0, hours = 0, minutes = 0, seconds = 0;
-        let totalMilliseconds = difference;
-        const nowDate = new Date(now);
-        const targetDateObj = new Date(targetDate);
-
-        // --- Calendar-based year calculation ---
-        if (show_years) {
-          const yearResult = this._calculateCalendarYears(nowDate, targetDateObj);
-          years = yearResult.years;
-          totalMilliseconds = yearResult.remainingMs;
-          // Advance nowDate by the calculated years for subsequent month calculation
-          nowDate.setFullYear(nowDate.getFullYear() + years);
-        }
-
-        // --- Calendar-based month calculation ---
-        if (show_months) {
-          const calendarResult = this._calculateCalendarMonths(nowDate, targetDateObj);
-          months = calendarResult.months;
-          totalMilliseconds = calendarResult.remainingMs;
-        } else if (show_years && !show_months) {
-          // If months are disabled but years are enabled, absorb remaining months into years
-          // by recalculating from the year-advanced date
-          const additionalYears = this._calculateCalendarYears(nowDate, targetDateObj);
-          years += additionalYears.years;
-          totalMilliseconds = additionalYears.remainingMs;
-          nowDate.setFullYear(nowDate.getFullYear() + additionalYears.years);
-        }
-
-        // --- Week calculation (simple ms-based) ---
-        if (show_weeks) {
-          weeks = Math.floor(totalMilliseconds / MS_PER_WEEK);
-          totalMilliseconds %= MS_PER_WEEK;
-        }
-
-        // --- Day calculation ---
-        if (show_days) {
-          days = Math.floor(totalMilliseconds / MS_PER_DAY);
-          totalMilliseconds %= MS_PER_DAY;
-        } else if ((show_years || show_months || show_weeks) && !show_days) {
-          // Days disabled: roll extra days into weeks if enabled, otherwise let them fall through
-          const extraDays = Math.floor(totalMilliseconds / MS_PER_DAY);
-          if (show_weeks) {
-            weeks += Math.floor(extraDays / 7);
-            totalMilliseconds -= Math.floor(extraDays / 7) * 7 * MS_PER_DAY;
-          }
-          // Remaining sub-day ms stay for hours/minutes/seconds
-          if (show_days) {
-            days = Math.floor(totalMilliseconds / MS_PER_DAY);
-            totalMilliseconds %= MS_PER_DAY;
-          }
-        }
-
-        // --- Hour calculation ---
-        if (show_hours) {
-          hours = Math.floor(totalMilliseconds / MS_PER_HOUR);
-          totalMilliseconds %= MS_PER_HOUR;
-        } else if ((show_years || show_months || show_weeks || show_days) && !show_hours) {
-          const extraHours = Math.floor(totalMilliseconds / MS_PER_HOUR);
-          if (show_days) {
-            days += Math.ceil(extraHours / 24);
-          } else if (show_weeks) {
-            // Roll hours into weeks via days
-            days += Math.floor(extraHours / 24);
-            weeks += Math.floor(days / 7);
-            days = days % 7;
-          }
-          totalMilliseconds %= MS_PER_HOUR;
-        }
-
-        // --- Minute calculation ---
-        if (show_minutes) {
-          minutes = Math.floor(totalMilliseconds / MS_PER_MINUTE);
-          totalMilliseconds %= MS_PER_MINUTE;
-        } else if ((show_years || show_months || show_weeks || show_days || show_hours) && !show_minutes) {
-          const extraMinutes = Math.floor(totalMilliseconds / MS_PER_MINUTE);
-          if (show_hours) {
-            hours += Math.floor(extraMinutes / SECONDS_PER_MINUTE);
-          } else if (show_days) {
-            days += Math.ceil(extraMinutes / (SECONDS_PER_MINUTE * 24));
-          }
-          totalMilliseconds %= MS_PER_MINUTE;
-        }
-
-        // --- Second calculation ---
-        if (show_seconds) {
-          seconds = Math.floor(totalMilliseconds / MS_PER_SECOND);
-        } else if ((show_years || show_months || show_weeks || show_days || show_hours || show_minutes) && !show_seconds) {
-          const extraSeconds = Math.floor(totalMilliseconds / MS_PER_SECOND);
-          if (show_minutes) {
-            minutes += Math.floor(extraSeconds / SECONDS_PER_MINUTE);
-          } else if (show_hours) {
-            hours += Math.floor(extraSeconds / SECONDS_PER_HOUR);
-          } else if (show_days) {
-            days += Math.ceil(extraSeconds / (SECONDS_PER_HOUR * 24));
-          }
-        }
-
-        this.timeRemaining = { years, months, weeks, days, hours, minutes, seconds, total: difference };
+      if (mode === 'count_up') {
+        this.timeRemaining = now > targetDate
+          ? this._calculateRangeState(targetDate, now, config, false)
+          : this._buildZeroState();
+        this.expired = false;
+      } else if (targetDate > now) {
+        this.timeRemaining = this._calculateRangeState(now, targetDate, config, true);
         this.expired = false;
       } else {
-        this.timeRemaining = { years: 0, months: 0, weeks: 0, days: 0, hours: 0, minutes: 0, seconds: 0, total: 0 };
+        this.timeRemaining = this._buildZeroState();
         this.expired = true;
       }
 
@@ -338,6 +347,8 @@ export class CountdownService {
    * @returns {Promise<number>} - Progress percentage (0-100)
    */
   async calculateProgress(config: CardConfig, hass: HomeAssistant | null): Promise<number> {
+    const mode = this._getMode(config);
+
     // TIMER ENTITY SUPPORT (including Alexa and Google timers)
     if (config.timer_entity && hass) {
       const timerData = TimerEntityService.getTimerData(config.timer_entity, hass);
@@ -359,6 +370,35 @@ export class CountdownService {
     // Use the helper method for consistent date parsing
     const targetDate = this.dateParser.parseISODate(targetDateValue);
     const now = Date.now();
+
+    if (mode === 'count_up') {
+      if (isNaN(targetDate) || now <= targetDate) return 0;
+
+      const elapsed = now - targetDate;
+
+      if (config.count_up_goal_date) {
+        const goalDateValue = await this.templateService.resolveValue(config.count_up_goal_date);
+        const goalDate = this.dateParser.parseISODate(goalDateValue);
+
+        if (!isNaN(goalDate) && goalDate > targetDate) {
+          const totalDuration = goalDate - targetDate;
+          return Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+        }
+      }
+
+      let cycleInput = config.count_up_cycle;
+      if (typeof cycleInput === 'string') {
+        cycleInput = await this.templateService.resolveValue(cycleInput);
+      }
+
+      const cycleMs = parseDurationInputToMilliseconds(cycleInput);
+      if (cycleMs > 0) {
+        const cycleElapsed = elapsed % cycleMs;
+        return Math.min(100, Math.max(0, (cycleElapsed / cycleMs) * 100));
+      }
+
+      return 0;
+    }
 
     let creationDate;
     if (config.creation_date) {
@@ -390,6 +430,9 @@ export class CountdownService {
    * @returns {Object} - Object with value and label properties
    */
   getMainDisplay(config: CardConfig, hass?: HomeAssistant | null): { value: string; label: string } {
+    const mode = this._getMode(config);
+    const labelStyle = mode === 'count_up' ? 'timer' : 'mainDisplay';
+
     // TIMER ENTITY SUPPORT (including Alexa and Google timers)
     if (config.timer_entity && hass) {
       const timerData = TimerEntityService.getTimerData(config.timer_entity, hass);
@@ -401,9 +444,9 @@ export class CountdownService {
           if (TimerEntityService.isTimerExpired(timerData)) {
             return { value: '🔔', label: TimerEntityService.getTimerSubtitle(timerData, false) };
           }
-          if (hours > 0) return { value: hours.toString(), label: getUnitLabel('hour', hours, 'mainDisplay') };
-          if (minutes > 0) return { value: minutes.toString(), label: getUnitLabel('minute', minutes, 'mainDisplay') };
-          return { value: seconds.toString(), label: getUnitLabel('second', seconds, 'mainDisplay') };
+          if (hours > 0) return { value: hours.toString(), label: getUnitLabel('hour', hours, labelStyle) };
+          if (minutes > 0) return { value: minutes.toString(), label: getUnitLabel('minute', minutes, labelStyle) };
+          return { value: seconds.toString(), label: getUnitLabel('second', seconds, labelStyle) };
         }
 
         // Standard timer handling
@@ -426,9 +469,9 @@ export class CountdownService {
         if (TimerEntityService.isTimerExpired(timerData)) {
           return { value: '🔔', label: TimerEntityService.getTimerSubtitle(timerData, false) };
         }
-        if (hours > 0) return { value: hours.toString(), label: getUnitLabel('hour', hours, 'mainDisplay') };
-        if (minutes > 0) return { value: minutes.toString(), label: getUnitLabel('minute', minutes, 'mainDisplay') };
-        return { value: seconds.toString(), label: getUnitLabel('second', seconds, 'mainDisplay') };
+        if (hours > 0) return { value: hours.toString(), label: getUnitLabel('hour', hours, labelStyle) };
+        if (minutes > 0) return { value: minutes.toString(), label: getUnitLabel('minute', minutes, labelStyle) };
+        return { value: seconds.toString(), label: getUnitLabel('second', seconds, labelStyle) };
       }
 
       // No timer found; check if auto-discovery was enabled
@@ -443,7 +486,7 @@ export class CountdownService {
     const { show_years, show_months, show_weeks, show_days, show_hours, show_minutes, show_seconds } = config;
     const { years, months, weeks, days, hours, minutes, seconds } = this.timeRemaining;
 
-    if (this.expired) {
+    if (mode !== 'count_up' && this.expired) {
       // For auto-discovered smart assistant timers, prefer timer-style expired text and cached label if available
       if (config.auto_discover_alexa || config.auto_discover_google) {
         if (this.lastAlexaTimerData) {
@@ -456,22 +499,22 @@ export class CountdownService {
 
     // Show the largest time unit that is enabled and has a value > 0
     if (show_years && years > 0) {
-      return { value: years.toString(), label: getUnitLabel('year', years, 'mainDisplay') };
+      return { value: years.toString(), label: getUnitLabel('year', years, labelStyle) };
     } else if (show_months && months > 0) {
-      return { value: months.toString(), label: getUnitLabel('month', months, 'mainDisplay') };
+      return { value: months.toString(), label: getUnitLabel('month', months, labelStyle) };
     } else if (show_weeks && weeks > 0) {
-      return { value: weeks.toString(), label: getUnitLabel('week', weeks, 'mainDisplay') };
+      return { value: weeks.toString(), label: getUnitLabel('week', weeks, labelStyle) };
     } else if (show_days && days > 0) {
-      return { value: days.toString(), label: getUnitLabel('day', days, 'mainDisplay') };
+      return { value: days.toString(), label: getUnitLabel('day', days, labelStyle) };
     } else if (show_hours && hours > 0) {
-      return { value: hours.toString(), label: getUnitLabel('hour', hours, 'mainDisplay') };
+      return { value: hours.toString(), label: getUnitLabel('hour', hours, labelStyle) };
     } else if (show_minutes && minutes > 0) {
-      return { value: minutes.toString(), label: getUnitLabel('minute', minutes, 'mainDisplay') };
+      return { value: minutes.toString(), label: getUnitLabel('minute', minutes, labelStyle) };
     } else if (show_seconds && seconds >= 0) {
-      return { value: seconds.toString(), label: getUnitLabel('second', seconds, 'mainDisplay') };
+      return { value: seconds.toString(), label: getUnitLabel('second', seconds, labelStyle) };
     }
 
-    return { value: '0', label: getUnitLabel('second', 0, 'mainDisplay') };
+    return { value: '0', label: getUnitLabel('second', 0, labelStyle) };
   }
 
   /**
@@ -483,6 +526,7 @@ export class CountdownService {
    */
   getSubtitle(config: CardConfig, hass: HomeAssistant | null, localize?: LocalizeFunction, useCompact: boolean = true): string {
     const t = localize || ((key: string) => key);
+    const mode = this._getMode(config);
     // TIMER ENTITY SUPPORT (Handles explicit entity)
     if (config.timer_entity && hass) {
       const timerData = TimerEntityService.getTimerData(config.timer_entity, hass);
@@ -520,7 +564,7 @@ export class CountdownService {
     }
 
     // --- FALLBACK TO STANDARD COUNTDOWN ---
-    if (this.expired) {
+    if (mode !== 'count_up' && this.expired) {
       const { expired_text = t('countdown.completed') } = config;
       return expired_text;
     }

@@ -14,6 +14,7 @@ export class TimeFlowCardEditor extends LitElement {
     // Track which date fields are in "template mode"
     @state() private _targetDateTemplateMode: boolean = false;
     @state() private _creationDateTemplateMode: boolean = false;
+    @state() private _countUpGoalDateTemplateMode: boolean = false;
 
     static get styles(): CSSResult {
         return css`
@@ -103,8 +104,10 @@ export class TimeFlowCardEditor extends LitElement {
         // Auto-detect if existing values are templates
         const targetDate = config.target_date || '';
         const creationDate = config.creation_date || '';
+        const countUpGoalDate = config.count_up_goal_date || '';
         this._targetDateTemplateMode = this._isTemplate(targetDate);
         this._creationDateTemplateMode = this._isTemplate(creationDate);
+        this._countUpGoalDateTemplateMode = this._isTemplate(countUpGoalDate);
     }
 
     private _isTemplate(value: string): boolean {
@@ -155,8 +158,11 @@ export class TimeFlowCardEditor extends LitElement {
         const helpers: Record<string, string> = {
             // Timer Source
             'timer_entity': 'Select a timer, sensor, or input_datetime entity',
+            'mode': 'Choose whether the card counts down to a date or counts up from a date',
             'target_date': 'ISO date, entity, or template: "2024-12-31T23:59:59", "{{ states(\'input_datetime.deadline\') }}"',
-            'creation_date': 'Start date for progress calculation (optional)',
+            'creation_date': 'Start date for countdown progress calculation (optional)',
+            'count_up_goal_date': 'Optional goal/end date for count-up circle progress',
+            'count_up_cycle': 'Optional cycle length for count-up progress: "30d", "12h", "90m", "24:00:00", or seconds',
             'auto_discover_alexa': 'Automatically find active Alexa timers',
             'auto_discover_google': 'Automatically find active Google Home timers',
             'alexa_device_filter': 'Comma-separated list of Alexa device names or IDs to filter timers (e.g., "Kitchen, Living Room")',
@@ -204,8 +210,11 @@ export class TimeFlowCardEditor extends LitElement {
 
         const labels: Record<string, string> = {
             'timer_entity': 'Timer Entity',
+            'mode': 'Mode',
             'target_date': 'Target Date/Time',
             'creation_date': 'Start Date (for progress)',
+            'count_up_goal_date': 'Goal Date',
+            'count_up_cycle': 'Count-up Cycle',
             'auto_discover_alexa': 'Auto-discover Alexa Timers',
             'auto_discover_google': 'Auto-discover Google Timers',
             'alexa_device_filter': 'Alexa Device Filter',
@@ -249,7 +258,7 @@ export class TimeFlowCardEditor extends LitElement {
     }
 
     private _renderDateField(
-        configKey: 'target_date' | 'creation_date',
+        configKey: 'target_date' | 'creation_date' | 'count_up_goal_date',
         label: string,
         helper: string,
         templateMode: boolean,
@@ -307,6 +316,10 @@ export class TimeFlowCardEditor extends LitElement {
         this._creationDateTemplateMode = !this._creationDateTemplateMode;
     }
 
+    private _toggleCountUpGoalDateMode(): void {
+        this._countUpGoalDateTemplateMode = !this._countUpGoalDateTemplateMode;
+    }
+
     /**
      * Compute the effective compact_format state for display
      * Auto-enables when 3+ units are selected (unless explicitly disabled)
@@ -326,10 +339,12 @@ export class TimeFlowCardEditor extends LitElement {
 
     render(): TemplateResult {
         const cfg = this._config || {};
+        const mode = cfg.mode === 'count_up' ? 'count_up' : 'count_down';
 
         // Create a display config that shows the effective compact_format state
         const displayCfg = {
             ...cfg,
+            mode,
             // Show the effective compact_format value for UI consistency
             compact_format: this._getEffectiveCompactFormat()
         };
@@ -338,6 +353,18 @@ export class TimeFlowCardEditor extends LitElement {
             // ═══════════════════════════════════════════════════════════
             // CARD STYLE - Choose card appearance
             // ═══════════════════════════════════════════════════════════════════════════════
+            { 
+                name: 'mode', 
+                selector: { 
+                    select: { 
+                        options: [
+                            { value: 'count_down', label: 'Count Down' },
+                            { value: 'count_up', label: 'Count Up' }
+                        ],
+                        mode: 'dropdown'
+                    } 
+                } 
+            },
             { 
                 name: 'style', 
                 selector: { 
@@ -465,6 +492,7 @@ export class TimeFlowCardEditor extends LitElement {
                             { name: 'icon_size', selector: { number: { min: 10, max: 350, step: 5 } } },
                         ]
                     },
+                    { name: 'count_up_cycle', selector: { text: {} } },
                     { name: 'progress_bg_stroke', selector: { text: {} } },
                     { name: 'progress_bg_opacity', selector: { number: { min: 0, max: 100, step: 5 } } },
                     { name: 'invert_progress', selector: { boolean: {} } },
@@ -505,19 +533,27 @@ export class TimeFlowCardEditor extends LitElement {
             <div class="date-fields-section">
                 ${this._renderDateField(
             'target_date',
-            'Target Date',
-            'Date/time when countdown ends',
+            mode === 'count_up' ? 'Start Date' : 'Target Date',
+            mode === 'count_up' ? 'Date/time the elapsed count begins' : 'Date/time when countdown ends',
             this._targetDateTemplateMode,
             () => this._toggleTargetDateMode()
         )}
                 
-                ${this._renderDateField(
-            'creation_date',
-            'Creation Date',
-            'Start date (defaults to now)',
-            this._creationDateTemplateMode,
-            () => this._toggleCreationDateMode()
-        )}
+                ${mode === 'count_up'
+                ? this._renderDateField(
+                    'count_up_goal_date',
+                    'Goal Date',
+                    'Optional end date for count-up progress',
+                    this._countUpGoalDateTemplateMode,
+                    () => this._toggleCountUpGoalDateMode()
+                )
+                : this._renderDateField(
+                    'creation_date',
+                    'Creation Date',
+                    'Optional start date for countdown progress',
+                    this._creationDateTemplateMode,
+                    () => this._toggleCreationDateMode()
+                )}
             </div>
             
             <ha-form

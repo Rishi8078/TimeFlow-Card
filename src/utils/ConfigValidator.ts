@@ -3,6 +3,8 @@
  * Ensures security, type safety, and data integrity with graceful error handling
  */
 
+import { parseDurationInputToMilliseconds } from './TimeUtils';
+
 export interface ValidationError {
   field: string;
   message: string;
@@ -86,6 +88,42 @@ export class ConfigValidator {
         severity: 'warning',
         suggestion: 'Use ISO date string, entity ID, or template. This field is optional.',
         value: config.creation_date
+      });
+    }
+
+    // Validate count_up_goal_date if provided
+    if (config.count_up_goal_date && !this.isValidDateInput(config.count_up_goal_date)) {
+      errors.push({
+        field: 'count_up_goal_date',
+        message: 'Invalid count_up_goal_date format',
+        severity: 'warning',
+        suggestion: 'Use ISO date string, entity ID, or template. This field is optional.',
+        value: config.count_up_goal_date
+      });
+    }
+
+    // Validate mode
+    if (config.mode !== undefined && !['count_down', 'count_up'].includes(config.mode)) {
+      errors.push({
+        field: 'mode',
+        message: 'Invalid mode value',
+        severity: 'warning',
+        suggestion: 'Use "count_down" or "count_up".',
+        value: config.mode
+      });
+    }
+
+    // Validate count_up_cycle if provided
+    const isDynamicCountUpCycle = typeof config.count_up_cycle === 'string' &&
+      (this.isTemplate(config.count_up_cycle) || this.isValidEntityId(config.count_up_cycle));
+
+    if (config.count_up_cycle !== undefined && !isDynamicCountUpCycle && parseDurationInputToMilliseconds(config.count_up_cycle) <= 0) {
+      errors.push({
+        field: 'count_up_cycle',
+        message: 'Invalid count_up_cycle format',
+        severity: 'warning',
+        suggestion: 'Use seconds, HH:MM:SS, or compact units like "30d", "12h", or "90m".',
+        value: config.count_up_cycle
       });
     }
     
@@ -240,6 +278,19 @@ export class ConfigValidator {
           case 'icon_size':
             if (!this.isValidDimensionInput(safeConfig.icon_size)) {
               safeConfig.icon_size = 100;
+            }
+            break;
+          case 'mode':
+            safeConfig.mode = 'count_down';
+            break;
+          case 'count_up_goal_date':
+            if (!this.isValidDateInput(safeConfig.count_up_goal_date)) {
+              delete safeConfig.count_up_goal_date;
+            }
+            break;
+          case 'count_up_cycle':
+            if (parseDurationInputToMilliseconds(safeConfig.count_up_cycle) <= 0) {
+              delete safeConfig.count_up_cycle;
             }
             break;
         }

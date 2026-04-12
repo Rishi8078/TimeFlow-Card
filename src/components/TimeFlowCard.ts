@@ -394,6 +394,7 @@ export class TimeFlowCard extends LitElement {
   static getStubConfig(): CardConfig {
     return {
       type: 'custom:timeflow-card',
+      mode: 'count_down',
       target_date: '2026-12-31T23:59:59',
       creation_date: '2025-12-31T23:59:59',
       timer_entity: '',
@@ -549,6 +550,8 @@ export class TimeFlowCard extends LitElement {
     const templateKeys = [
       'target_date',
       'creation_date',
+      'count_up_goal_date',
+      'count_up_cycle',
       'timer_entity',
       'title',
       'subtitle',
@@ -639,6 +642,7 @@ export class TimeFlowCard extends LitElement {
       expired_animation = true,
       expired_text = '',
       invert_progress = false,
+      mode = 'count_down',
       width,
       height,
       aspect_ratio,
@@ -730,6 +734,7 @@ export class TimeFlowCard extends LitElement {
     const { configWithDefaults, shouldEnableActions } = this._getActionConfig();
     const hasHeaderIcon = this._hasHeaderIcon();
     const displayProgress = invert_progress ? 100 - this._progress : this._progress;
+    const progressAriaLabel = `${mode === 'count_up' ? 'Elapsed' : 'Countdown'} progress: ${Math.round(displayProgress)}%`;
 
     return html`
       <ha-card 
@@ -765,7 +770,7 @@ export class TimeFlowCard extends LitElement {
                 .strokeWidth="${dynamicStroke}"
                 .bgStroke="${this._resolvedConfig.progress_bg_stroke || '#FFFFFF1A'}"
                 .bgOpacity="${this._resolvedConfig.progress_bg_opacity ?? null}"
-                aria-label="Countdown progress: ${Math.round(displayProgress)}%"
+                aria-label="${progressAriaLabel}"
               ></progress-circle>
             </div>
           </div>
@@ -785,6 +790,7 @@ export class TimeFlowCard extends LitElement {
       background_color,
       expired_animation = true,
       expired_text = '',
+      mode = 'count_down',
       header_icon,
       header_icon_color,
       header_icon_background,
@@ -819,7 +825,7 @@ export class TimeFlowCard extends LitElement {
       // Show expired text when countdown is complete
       subtitleText = expired_text || 'Completed';
     } else {
-      // Format target date for display (e.g., "Tue, Feb 3")
+      // Format the relevant anchor date for display (e.g., "Tue, Feb 3")
       subtitleText = this._formatTargetDate();
     }
 
@@ -882,6 +888,7 @@ export class TimeFlowCard extends LitElement {
       expired_animation = true,
       expired_text = '',
       invert_progress = false,
+      mode = 'count_down',
       header_icon,
       header_icon_color,
       header_icon_background,
@@ -917,6 +924,7 @@ export class TimeFlowCard extends LitElement {
     const { configWithDefaults, shouldEnableActions } = this._getActionConfig();
     const hasHeaderIcon = this._hasHeaderIcon(header_icon);
     const displayProgress = invert_progress ? 100 - this._progress : this._progress;
+    const progressAriaLabel = `${mode === 'count_up' ? 'Elapsed' : 'Countdown'} progress: ${Math.round(displayProgress)}%`;
 
     // Calculate dynamic circle size for compact layout (smaller than classic)
     const baseCircleSize = icon_size || 100;
@@ -962,7 +970,7 @@ export class TimeFlowCard extends LitElement {
               .strokeWidth="${compactStroke}"
               .bgStroke="${this._resolvedConfig.progress_bg_stroke || '#FFFFFF1A'}"
               .bgOpacity="${this._resolvedConfig.progress_bg_opacity ?? null}"
-              aria-label="Countdown progress: ${Math.round(displayProgress)}%"
+              aria-label="${progressAriaLabel}"
             ></progress-circle>
           </div>
         </div>
@@ -1088,7 +1096,7 @@ export class TimeFlowCard extends LitElement {
    * Gets title text with fallback logic for timers and auto-discovery
    */
   private _getTitleText(): string {
-    const { title, expired_text = '' } = this._resolvedConfig;
+    const { title, expired_text = '', mode = 'count_down' } = this._resolvedConfig;
     
     if (title !== undefined && title !== null && !(typeof title === 'string' && title.trim() === '')) {
       return title;
@@ -1104,6 +1112,10 @@ export class TimeFlowCard extends LitElement {
       return 'Countdown Timer';
     }
     
+    if (mode === 'count_up') {
+      return 'Elapsed Time';
+    }
+
     return this._expired ? expired_text || 'Countdown Timer' : 'Countdown Timer';
   }
 
