@@ -10,7 +10,7 @@ import { StyleManager } from '../utils/StyleManager';
 import { setupLocalize, LocalizeFunction } from '../utils/localize';
 import { HomeAssistant, CountdownState, CardConfig, ActionHandlerEvent } from '../types/index';
 import { createActionHandler, createHandleAction } from '../utils/action-handler';
-import { parseMillisecondsToUnits, getUnitLabel, getLocalizedEventyLabel } from '../utils/TimeUtils';
+import { getLocalizedEventyLabel } from '../utils/TimeUtils';
 import '../utils/ErrorDisplay';
 
 export class TimeFlowCard extends LitElement {
@@ -81,7 +81,7 @@ export class TimeFlowCard extends LitElement {
       }
       
       /* Classic style needs minimum height, but compact styles should auto-size */
-      ha-card:not(:has(.card-content-list)):not(:has(.card-content-compact)) {
+      ha-card:not(:has(.card-content-list)):not(:has(.card-content-compact)):not(:has(.card-content-gridy)) {
         min-height: 120px;
       }
       
@@ -366,6 +366,91 @@ export class TimeFlowCard extends LitElement {
       .compact-progress progress-circle {
         opacity: 0.9;
       }
+
+      /* ═══════════════════════════════════════════════════════════════════════
+         GRIDY LAYOUT STYLES - Header row with dot-grid progress
+         ═══════════════════════════════════════════════════════════════════════ */
+
+      .card-content-gridy {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 18px 20px;
+        min-height: 120px;
+        box-sizing: border-box;
+        background: inherit;
+      }
+
+      .gridy-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .gridy-title-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        flex: 1;
+      }
+
+      .gridy-title {
+        margin: 0;
+        font-size: var(--timeflow-title-size, 1.45rem);
+        font-weight: 600;
+        line-height: 1.2;
+        color: var(--timeflow-card-text-color, inherit);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .gridy-status {
+        margin: 0;
+        max-width: 45%;
+        flex-shrink: 0;
+        font-size: var(--timeflow-subtitle-size, 1rem);
+        font-weight: 500;
+        line-height: 1.2;
+        color: var(--timeflow-card-text-color, inherit);
+        opacity: 0.8;
+        text-align: right;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .gridy-progress {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
+      }
+
+      .gridy-progress progress-grid {
+        opacity: 0.95;
+        width: 100%;
+      }
+
+      @media (max-width: 480px) {
+        .card-content-gridy {
+          gap: 12px;
+        }
+
+        .gridy-header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .gridy-status {
+          max-width: 100%;
+          text-align: left;
+        }
+      }
       
       @keyframes celebration {
         0% { transform: scale(1); }
@@ -623,6 +708,10 @@ export class TimeFlowCard extends LitElement {
     
     if (style === 'classic-compact') {
       return this._renderClassicCompactCard();
+    }
+
+    if (style === 'gridy') {
+      return this._renderGridyCard();
     }
     
     // Classic: circle progress style
@@ -979,69 +1068,107 @@ export class TimeFlowCard extends LitElement {
   }
 
   /**
+   * Renders the Gridy style - title/status row with a dot-grid progress indicator.
+   */
+  private _renderGridyCard(): TemplateResult {
+    const {
+      subtitle,
+      text_color,
+      background_color,
+      progress_color,
+      expired_animation = true,
+      expired_text = '',
+      invert_progress = false,
+      mode = 'count_down',
+      width,
+      height,
+      aspect_ratio,
+      compact_format,
+    } = this._resolvedConfig;
+
+    const { cardBackground, textColor } = this._getCardColors();
+    const mainProgressColor = progress_color || text_color || 'var(--progress-color, #4caf50)';
+    const dimensionStyles = this.styleManager.generateCardDimensionStyles(width, height, aspect_ratio);
+    const proportionalSizes = this.styleManager.calculateProportionalSizes(width, height, aspect_ratio);
+    const columns = 20;
+    const minColumns = 10;
+    const rows = 5;
+    const gap = 6;
+    const dotSize = 10;
+
+    const cardStyles = [
+      ...(cardBackground ? [`background: ${cardBackground}`, `--timeflow-card-background-color: ${cardBackground}`] : []),
+      ...(textColor ? [`color: ${textColor}`, `--timeflow-card-text-color: ${textColor}`] : []),
+      `--timeflow-title-size: ${Math.max(1.25, proportionalSizes.titleSize * 0.95)}rem`,
+      `--timeflow-subtitle-size: ${Math.max(0.95, proportionalSizes.subtitleSize * 0.95)}rem`,
+      ...dimensionStyles
+    ].join('; ');
+
+    const timeFormatCompact = compact_format !== false;
+    let statusText: string;
+    if (subtitle) {
+      statusText = subtitle;
+    } else if (this._expired) {
+      statusText = expired_text || 'Completed';
+    } else {
+      statusText = this.countdownService.getSubtitle(this._resolvedConfig, this.hass, this._localize || undefined, timeFormatCompact);
+    }
+
+    const titleText = this._getTitleText();
+    const cardClasses = this._getCardClasses(expired_animation);
+    const { configWithDefaults, shouldEnableActions } = this._getActionConfig();
+    const displayProgress = invert_progress ? 100 - this._progress : this._progress;
+    const progressAriaLabel = `${mode === 'count_up' ? 'Elapsed' : 'Countdown'} progress: ${Math.round(displayProgress)}%`;
+
+    return html`
+      <ha-card
+        class="${cardClasses}"
+        style="${cardStyles}"
+        ?actionHandler=${shouldEnableActions}
+        .actionHandler=${shouldEnableActions ? createActionHandler(configWithDefaults) : undefined}
+        @action=${shouldEnableActions && this.hass ? createHandleAction(this.hass, configWithDefaults) : undefined}
+      >
+        <div class="card-content-gridy">
+          <div class="gridy-header">
+            <div class="gridy-title-group">
+              <h2 class="gridy-title" aria-live="polite">${titleText}</h2>
+            </div>
+            <p class="gridy-status" aria-live="polite">${statusText}</p>
+          </div>
+
+          <div class="gridy-progress" role="group" aria-label="${mode === 'count_up' ? 'Elapsed Progress' : 'Countdown Progress'}">
+            <progress-grid
+              .progress="${displayProgress}"
+              .color="${mainProgressColor}"
+              .bgStroke="${this._resolvedConfig.progress_bg_stroke || '#FFFFFF1A'}"
+              .bgOpacity="${this._resolvedConfig.progress_bg_opacity ?? null}"
+              .fullWidth="${true}"
+              .minColumns="${minColumns}"
+              .rows="${rows}"
+              .columns="${columns}"
+              .dotSize="${dotSize}"
+              .gap="${gap}"
+              aria-label="${progressAriaLabel}"
+            ></progress-grid>
+          </div>
+        </div>
+      </ha-card>
+    `;
+  }
+
+  /**
    * Gets the primary countdown value and unit to display in Eventy layout
    * Returns the largest non-zero unit (e.g., "11" and "DAYS")
    * Auto-switches to next available unit when current unit reaches 0 (same as Classic style)
    * Supports localization for multi-language displays
    */
   private _getPrimaryCountdownUnit(): { primaryValue: number; primaryUnit: string } {
-    const { years, months, weeks, days, hours, minutes, seconds, total } = this._countdown;
-    const { show_years, show_months, show_weeks, show_days, show_hours, show_minutes, show_seconds } = this._resolvedConfig;
     const t = this._localize || undefined;
-
-    // First, try to return an enabled unit that has a non-zero value
-    if (show_years !== false && years > 0) {
-      return { primaryValue: years, primaryUnit: getLocalizedEventyLabel('year', years, t) };
-    }
-    if (show_months !== false && months > 0) {
-      return { primaryValue: months, primaryUnit: getLocalizedEventyLabel('month', months, t) };
-    }
-    if (show_weeks !== false && weeks > 0) {
-      return { primaryValue: weeks, primaryUnit: getLocalizedEventyLabel('week', weeks, t) };
-    }
-    if (show_days !== false && days > 0) {
-      // Calculate total days including months if months are hidden
-      const totalDays = (show_months === false ? months * 30 : 0) + days;
-      return { primaryValue: totalDays, primaryUnit: getLocalizedEventyLabel('day', totalDays, t) };
-    }
-    if (show_hours !== false && hours > 0) {
-      return { primaryValue: hours, primaryUnit: getLocalizedEventyLabel('hour', hours, t) };
-    }
-    if (show_minutes !== false && minutes > 0) {
-      return { primaryValue: minutes, primaryUnit: getLocalizedEventyLabel('minute', minutes, t) };
-    }
-    if (show_seconds !== false && seconds > 0) {
-      return { primaryValue: seconds, primaryUnit: getLocalizedEventyLabel('second', seconds, t) };
-    }
-
-    // Fallback: All enabled units are zero, calculate from total milliseconds
-    // This handles cases like: user only enabled "days" but less than 24 hours remain
-    const totalMs = total || 0;
-    
-    if (totalMs <= 0) {
-      // Countdown is complete
-      return { primaryValue: 0, primaryUnit: show_seconds !== false ? getLocalizedEventyLabel('second', 0, t) : getLocalizedEventyLabel('day', 0, t) };
-    }
-
-    // Calculate fallback values from total milliseconds using shared utility
-    const fallback = parseMillisecondsToUnits(totalMs);
-
-    // Return the highest non-zero fallback unit
-    if (fallback.days > 0) {
-      return { primaryValue: fallback.days, primaryUnit: getLocalizedEventyLabel('day', fallback.days, t) };
-    }
-    if (fallback.hours > 0) {
-      return { primaryValue: fallback.hours, primaryUnit: getLocalizedEventyLabel('hour', fallback.hours, t) };
-    }
-    if (fallback.minutes > 0) {
-      return { primaryValue: fallback.minutes, primaryUnit: getLocalizedEventyLabel('minute', fallback.minutes, t) };
-    }
-    if (fallback.seconds > 0) {
-      return { primaryValue: fallback.seconds, primaryUnit: getLocalizedEventyLabel('second', fallback.seconds, t) };
-    }
-
-    // Truly at zero
-    return { primaryValue: 0, primaryUnit: getLocalizedEventyLabel('second', 0, t) };
+    const primaryUnit = this.countdownService.getPrimaryDisplayUnit(this._resolvedConfig);
+    return {
+      primaryValue: primaryUnit.value,
+      primaryUnit: getLocalizedEventyLabel(primaryUnit.unit, primaryUnit.value, t)
+    };
   }
 
   /**

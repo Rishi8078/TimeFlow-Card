@@ -56,6 +56,7 @@ export class CountdownService {
     }
 
     const { show_years, show_months, show_weeks, show_days, show_hours, show_minutes, show_seconds } = config;
+    const roundDaysOnceFromHiddenRemainder = roundUpHiddenUnits && !!show_days && !show_hours && !show_minutes && !show_seconds;
 
     let years = 0, months = 0, weeks = 0, days = 0, hours = 0, minutes = 0, seconds = 0;
     let totalMilliseconds = endTimestamp - startTimestamp;
@@ -94,6 +95,13 @@ export class CountdownService {
         weeks += Math.floor(extraDays / 7);
         totalMilliseconds -= Math.floor(extraDays / 7) * 7 * MS_PER_DAY;
       }
+    }
+
+    // When days is the smallest visible unit, round up once if any hidden remainder exists.
+    // This avoids stacking the same partial day again in the hidden hour/minute/second branches.
+    if (roundDaysOnceFromHiddenRemainder && totalMilliseconds > 0) {
+      days += 1;
+      totalMilliseconds = 0;
     }
 
     if (show_hours) {
@@ -423,6 +431,56 @@ export class CountdownService {
     return this.expired ? 100 : progress;
   }
 
+  getPrimaryDisplayUnit(config: CardConfig): { value: number; unit: 'year' | 'month' | 'week' | 'day' | 'hour' | 'minute' | 'second' } {
+    const { years, months, weeks, days, hours, minutes, seconds, total } = this.timeRemaining || this._buildZeroState();
+    const { show_years, show_months, show_weeks, show_days, show_hours, show_minutes, show_seconds } = config;
+
+    if (show_years !== false && years > 0) {
+      return { value: years, unit: 'year' };
+    }
+    if (show_months !== false && months > 0) {
+      return { value: months, unit: 'month' };
+    }
+    if (show_weeks !== false && weeks > 0) {
+      return { value: weeks, unit: 'week' };
+    }
+    if (show_days !== false && days > 0) {
+      return { value: days, unit: 'day' };
+    }
+    if (show_hours !== false && hours > 0) {
+      return { value: hours, unit: 'hour' };
+    }
+    if (show_minutes !== false && minutes > 0) {
+      return { value: minutes, unit: 'minute' };
+    }
+    if (show_seconds !== false && seconds > 0) {
+      return { value: seconds, unit: 'second' };
+    }
+
+    const totalMs = total || 0;
+
+    if (totalMs <= 0) {
+      return { value: 0, unit: show_seconds !== false ? 'second' : 'day' };
+    }
+
+    const fallback = parseMillisecondsToUnits(totalMs);
+
+    if (fallback.days > 0) {
+      return { value: fallback.days, unit: 'day' };
+    }
+    if (fallback.hours > 0) {
+      return { value: fallback.hours, unit: 'hour' };
+    }
+    if (fallback.minutes > 0) {
+      return { value: fallback.minutes, unit: 'minute' };
+    }
+    if (fallback.seconds > 0) {
+      return { value: fallback.seconds, unit: 'second' };
+    }
+
+    return { value: 0, unit: 'second' };
+  }
+
   /**
    * Gets the main display value and label (enhanced for Alexa and Google Home)
    * @param {Object} config - Card configuration
@@ -483,9 +541,6 @@ export class CountdownService {
       }
     }
 
-    const { show_years, show_months, show_weeks, show_days, show_hours, show_minutes, show_seconds } = config;
-    const { years, months, weeks, days, hours, minutes, seconds } = this.timeRemaining;
-
     if (mode !== 'count_up' && this.expired) {
       // For auto-discovered smart assistant timers, prefer timer-style expired text and cached label if available
       if (config.auto_discover_alexa || config.auto_discover_google) {
@@ -497,24 +552,11 @@ export class CountdownService {
       return { value: 'Done', label: 'Completed!' };
     }
 
-    // Show the largest time unit that is enabled and has a value > 0
-    if (show_years && years > 0) {
-      return { value: years.toString(), label: getUnitLabel('year', years, labelStyle) };
-    } else if (show_months && months > 0) {
-      return { value: months.toString(), label: getUnitLabel('month', months, labelStyle) };
-    } else if (show_weeks && weeks > 0) {
-      return { value: weeks.toString(), label: getUnitLabel('week', weeks, labelStyle) };
-    } else if (show_days && days > 0) {
-      return { value: days.toString(), label: getUnitLabel('day', days, labelStyle) };
-    } else if (show_hours && hours > 0) {
-      return { value: hours.toString(), label: getUnitLabel('hour', hours, labelStyle) };
-    } else if (show_minutes && minutes > 0) {
-      return { value: minutes.toString(), label: getUnitLabel('minute', minutes, labelStyle) };
-    } else if (show_seconds && seconds >= 0) {
-      return { value: seconds.toString(), label: getUnitLabel('second', seconds, labelStyle) };
-    }
-
-    return { value: '0', label: getUnitLabel('second', 0, labelStyle) };
+    const primaryUnit = this.getPrimaryDisplayUnit(config);
+    return {
+      value: primaryUnit.value.toString(),
+      label: getUnitLabel(primaryUnit.unit, primaryUnit.value, labelStyle)
+    };
   }
 
   /**
@@ -594,16 +636,19 @@ export class CountdownService {
       // This handles cases like: user selected only "days" but less than 24 hours remain
       // We need to calculate from total since disabled units may not be populated
       const totalMs = this.timeRemaining?.total || 0;
-      const fallback = parseMillisecondsToUnits(totalMs);
-
-      if (fallback.hours > 0) {
-        return applyPrefixSuffix(`${fallback.hours} ${fallback.hours === 1 ? t('time.hour_full') : t('time.hours_full')}`);
-      }
-      if (fallback.minutes > 0) {
-        return applyPrefixSuffix(`${fallback.minutes} ${fallback.minutes === 1 ? t('time.minute_full') : t('time.minutes_full')}`);
-      }
-      if (fallback.seconds > 0) {
-        return applyPrefixSuffix(`${fallback.seconds} ${fallback.seconds === 1 ? t('time.second_full') : t('time.seconds_full')}`);
+      if (totalMs > 0) {
+        const primaryUnit = this.getPrimaryDisplayUnit(config);
+        const unitLabels = {
+          year: [t('time.year_full'), t('time.years_full')],
+          month: [t('time.month_full'), t('time.months_full')],
+          week: [t('time.week_full'), t('time.weeks_full')],
+          day: [t('time.day_full'), t('time.days_full')],
+          hour: [t('time.hour_full'), t('time.hours_full')],
+          minute: [t('time.minute_full'), t('time.minutes_full')],
+          second: [t('time.second_full'), t('time.seconds_full')],
+        } as const;
+        const [singular, plural] = unitLabels[primaryUnit.unit];
+        return applyPrefixSuffix(`${primaryUnit.value} ${primaryUnit.value === 1 ? singular : plural}`);
       }
       // Only show "0 seconds" or "starting" if truly at zero
       if (show_seconds) return applyPrefixSuffix(`0 ${t('time.seconds_full')}`);

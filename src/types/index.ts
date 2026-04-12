@@ -100,14 +100,14 @@ export interface ActionHandlerEvent extends Event {
 }
 
 // Card style options
-export type CardStyle = 'classic' | 'eventy' | 'classic-compact';
+export type CardStyle = 'classic' | 'eventy' | 'classic-compact' | 'gridy';
 export type CardMode = 'count_down' | 'count_up';
 
 export interface CardConfig {
   type: string;
 
   // Card style
-  style?: CardStyle;  // 'classic' = circle progress, 'eventy' = compact horizontal, 'classic-compact' = horizontal with circle
+  style?: CardStyle;  // 'classic' = circle progress, 'eventy' = compact horizontal, 'classic-compact' = horizontal with circle, 'gridy' = horizontal card with dot-grid progress
   mode?: CardMode;    // 'count_down' = time remaining, 'count_up' = time elapsed since the configured date
 
   // Basic countdown configuration

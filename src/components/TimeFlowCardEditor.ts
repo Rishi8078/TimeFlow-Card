@@ -199,7 +199,7 @@ export class TimeFlowCardEditor extends LitElement {
             'header_icon_background': 'Icon background (e.g., "rgba(59, 130, 246, 0.2)")',
 
             // Style
-            'style': 'Card style: Classic (vertical with circle), Eventy (compact horizontal), Classic Compact (horizontal with circle)',
+            'style': 'Card style: Classic (vertical with circle), Eventy (compact horizontal), Classic Compact (horizontal with circle), or Gridy (dot-grid progress, no header icon)',
         };
         return helpers[schema.name] || '';
     }
@@ -349,6 +349,8 @@ export class TimeFlowCardEditor extends LitElement {
             compact_format: this._getEffectiveCompactFormat()
         };
 
+        const selectedStyle = displayCfg.style || 'classic';
+
         const schema = [
             // ═══════════════════════════════════════════════════════════
             // CARD STYLE - Choose card appearance
@@ -372,7 +374,8 @@ export class TimeFlowCardEditor extends LitElement {
                         options: [
                             { value: 'classic', label: 'Classic (Circle Progress)' },
                             { value: 'eventy', label: 'Eventy (Compact Horizontal)' },
-                            { value: 'classic-compact', label: 'Classic Compact (Horizontal + Circle)' }
+                            { value: 'classic-compact', label: 'Classic Compact (Horizontal + Circle)' },
+                            { value: 'gridy', label: 'Gridy (Header + Dot Grid)' }
                         ],
                         mode: 'dropdown'
                     } 
@@ -410,21 +413,23 @@ export class TimeFlowCardEditor extends LitElement {
             // ═══════════════════════════════════════════════════════════
             // HEADER ICON - Expandable
             // ═══════════════════════════════════════════════════════════
-            {
-                type: "expandable",
-                title: "Header Icon",
-                icon: "mdi:image-filter-vintage",
-                schema: [
-                    { name: 'header_icon', selector: { icon: {} } },
-                    {
-                        type: 'grid',
-                        schema: [
-                            { name: 'header_icon_color', selector: { text: {} } },
-                            { name: 'header_icon_background', selector: { text: {} } },
-                        ]
-                    },
-                ]
-            },
+            ...(selectedStyle === 'gridy' ? [] : [
+                {
+                    type: "expandable",
+                    title: "Header Icon",
+                    icon: "mdi:image-filter-vintage",
+                    schema: [
+                        { name: 'header_icon', selector: { icon: {} } },
+                        {
+                            type: 'grid',
+                            schema: [
+                                { name: 'header_icon_color', selector: { text: {} } },
+                                { name: 'header_icon_background', selector: { text: {} } },
+                            ]
+                        },
+                    ]
+                }
+            ]),
 
             // ═══════════════════════════════════════════════════════════
             // TIME UNITS - Always visible as grid

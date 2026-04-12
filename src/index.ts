@@ -18,6 +18,7 @@ declare global {
 
 import { TimeFlowCard } from './components/TimeFlowCard';
 import { ProgressCircle } from './components/ProgressCircle';
+import { ProgressGrid } from './components/ProgressGrid';
 import { ErrorDisplay } from './utils/ErrorDisplay';
 import { TimeFlowCardEditor } from './components/TimeFlowCardEditor';
 
@@ -30,6 +31,12 @@ if (!customElements.get('error-display')) {
 
 if (!customElements.get('progress-circle')) {
   customElements.define('progress-circle', ProgressCircle);
+} else {
+  // Component already registered
+}
+
+if (!customElements.get('progress-grid')) {
+  customElements.define('progress-grid', ProgressGrid);
 } else {
   // Component already registered
 }
@@ -57,4 +64,4 @@ window.customCards.push({
 });
 
 // Export main classes for external use or testing
-export { TimeFlowCard, ProgressCircle, ErrorDisplay, TimeFlowCardEditor };
+export { TimeFlowCard, ProgressCircle, ProgressGrid, ErrorDisplay, TimeFlowCardEditor };
