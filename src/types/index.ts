@@ -115,6 +115,7 @@ export interface CardConfig {
   creation_date?: string;        // Optional progress start date for count-down mode
   count_up_goal_date?: string;   // Optional goal/end date for count-up progress
   count_up_cycle?: string | number; // Optional repeating cycle length for count-up progress (e.g. "30d", "12:00:00", 86400)
+  progress_step?: string;           // Discrete step size for ring/grid: "1m","1h","1d","1w","1mo","1y"
 
   // Timer entity configuration (enhanced for Alexa and Google Home)
   timer_entity?: string;

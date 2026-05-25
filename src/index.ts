@@ -60,7 +60,7 @@ window.customCards.push({
   name: 'TimeFlow Card',
   description: 'A beautiful countdown timer card with progress circle for Home Assistant, using Lit',
   preview: true,
-  documentationURL: 'https://github.com/Rishi8078/TimeFlow-Card' // Update if needed
+  documentationURL: 'https://github.com/tux-84/TimeFlow-Card'
 });
 
 // Export main classes for external use or testing

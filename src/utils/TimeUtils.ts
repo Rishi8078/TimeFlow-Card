@@ -12,7 +12,9 @@ export const MS_PER_SECOND = 1000;
 export const MS_PER_MINUTE = 60 * MS_PER_SECOND;      // 60,000
 export const MS_PER_HOUR = 60 * MS_PER_MINUTE;        // 3,600,000
 export const MS_PER_DAY = 24 * MS_PER_HOUR;           // 86,400,000
-export const MS_PER_WEEK = 7 * MS_PER_DAY;            // 604,800,000
+export const MS_PER_WEEK  = 7       * MS_PER_DAY;           // 604,800,000
+export const MS_PER_MONTH = 30.4375 * MS_PER_DAY;           // ~2,629,800,000 (average month)
+export const MS_PER_YEAR  = 365.25  * MS_PER_DAY;           // ~31,557,600,000 (average year)
 
 // Seconds-based constants (for timer calculations)
 export const SECONDS_PER_MINUTE = 60;
@@ -238,4 +240,22 @@ export function getLocalizedEventyLabel(unit: TimeUnitType, value: number, local
   const keys = EVENTY_TRANSLATION_KEYS[unit];
   const key = value === 1 ? keys.singular : keys.plural;
   return localize(key);
+}
+
+/**
+ * Converts a canonical progress step string to milliseconds.
+ * Supported values: "1m" (minute), "1h" (hour), "1d" (day), "1w" (week),
+ * "1mo" (month), "1y" (year). Falls back to parseDurationInputToMilliseconds
+ * for arbitrary duration strings.
+ */
+export function parseProgressStepToMilliseconds(step: string): number {
+  switch (step.trim()) {
+    case '1m':  return MS_PER_MINUTE;
+    case '1h':  return MS_PER_HOUR;
+    case '1d':  return MS_PER_DAY;
+    case '1w':  return MS_PER_WEEK;
+    case '1mo': return MS_PER_MONTH;
+    case '1y':  return MS_PER_YEAR;
+    default:    return parseDurationInputToMilliseconds(step);
+  }
 }

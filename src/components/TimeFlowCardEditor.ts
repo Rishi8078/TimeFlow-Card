@@ -163,6 +163,7 @@ export class TimeFlowCardEditor extends LitElement {
             'creation_date': 'Start date for countdown progress calculation (optional)',
             'count_up_goal_date': 'Optional goal/end date for count-up circle progress',
             'count_up_cycle': 'Optional cycle length for count-up progress: "30d", "12h", "90m", "24:00:00", or seconds',
+            'progress_step': 'Discrete step size for ring/grid progress: 1m, 1h, 1d, 1w, 1mo, 1y',
             'auto_discover_alexa': 'Automatically find active Alexa timers',
             'auto_discover_google': 'Automatically find active Google Home timers',
             'alexa_device_filter': 'Comma-separated list of Alexa device names or IDs to filter timers (e.g., "Kitchen, Living Room")',
@@ -240,6 +241,7 @@ export class TimeFlowCardEditor extends LitElement {
             'progress_bg_stroke': 'Background Stroke Color',
             'progress_bg_opacity': 'Background Opacity',
             'invert_progress': 'Invert Progress',
+            'progress_step': 'Progress Step',
             'aspect_ratio': 'Aspect Ratio',
             'header_icon': 'Header Icon',
             'header_icon_color': 'Icon Color',
@@ -498,6 +500,23 @@ export class TimeFlowCardEditor extends LitElement {
                         ]
                     },
                     { name: 'count_up_cycle', selector: { text: {} } },
+                    {
+                        name: 'progress_step',
+                        selector: {
+                            select: {
+                                options: [
+                                    { value: '', label: 'None (continuous)' },
+                                    { value: '1m', label: 'Minute (1m)' },
+                                    { value: '1h', label: 'Hour (1h)' },
+                                    { value: '1d', label: 'Day (1d)' },
+                                    { value: '1w', label: 'Week (1w)' },
+                                    { value: '1mo', label: 'Month (1mo)' },
+                                    { value: '1y', label: 'Year (1y)' },
+                                ],
+                                custom_value: true,
+                            }
+                        }
+                    },
                     { name: 'progress_bg_stroke', selector: { text: {} } },
                     { name: 'progress_bg_opacity', selector: { number: { min: 0, max: 100, step: 5 } } },
                     { name: 'invert_progress', selector: { boolean: {} } },

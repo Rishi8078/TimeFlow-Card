@@ -17,14 +17,14 @@ A beautiful, highly customizable time card for Home Assistant. Use it as a count
 #### HACS (Recommended)
 
 <div align="left">
-  <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=rishi8078&repository=Timeflow-card" target="_blank" rel="noopener noreferrer">
+  <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=tux-84&repository=TimeFlow-Card" target="_blank" rel="noopener noreferrer">
     <img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open in HACS" width="200">
   </a>
 </div>
 
 ####  Manual Installation
 
-1.  Download `timeflow-card.js` from the latest [release](https://github.com/Rishi8078/TimeFlow-Card/releases).
+1.  Download `timeflow-card.js` from the latest [release](https://github.com/tux-84/TimeFlow-Card/releases).
 2.  Copy the file to your `config/www/` directory.
 3.  Add the card to your resources:
     ```yaml
@@ -822,7 +822,6 @@ MIT License - see the [LICENSE](https://www.google.com/search?q=LICENSE) file fo
 
 If you find this card useful, please consider supporting its development. Your contribution helps keep the project alive and growing.
 
-<a href="https://coff.ee/rishi8078" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 40 px !important;width: 144.666px !important;" ></a>
 -----
 
 **TimeFlow Card - Made with ❤️ for the Home Assistant community**
@@ -832,10 +831,8 @@ If you find this card useful, please consider supporting its development. Your c
 [ha_link]: https://www.home-assistant.io/
 [hacs_badge]: https://img.shields.io/badge/HACS-Compatible-orange
 [hacs_link]: https://hacs.xyz/
-[release_badge]: https://img.shields.io/github/v/release/Rishi8078/TimeFlow-Card
-[release]: https://github.com/Rishi8078/TimeFlow-Card/releases
-[bmac_badge]: https://img.shields.io/badge/buy_me_a-coffee-yellow
-[bmac]: https://coff.ee/rishi8078
-[Stars]:https://img.shields.io/github/stars/Rishi8078/TimeFlow-Card
-[Last commit]:https://img.shields.io/github/last-commit/Rishi8078/TimeFlow-Card
-[downloads]:https://img.shields.io/github/downloads/Rishi8078/TimeFlow-Card/total?style=flat-square
+[release_badge]: https://img.shields.io/github/v/release/tux-84/TimeFlow-Card
+[release]: https://github.com/tux-84/TimeFlow-Card/releases
+[Stars]:https://img.shields.io/github/stars/tux-84/TimeFlow-Card
+[Last commit]:https://img.shields.io/github/last-commit/tux-84/TimeFlow-Card
+[downloads]:https://img.shields.io/github/downloads/tux-84/TimeFlow-Card/total?style=flat-square

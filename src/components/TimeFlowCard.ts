@@ -10,7 +10,7 @@ import { StyleManager } from '../utils/StyleManager';
 import { setupLocalize, LocalizeFunction } from '../utils/localize';
 import { HomeAssistant, CountdownState, CardConfig, ActionHandlerEvent } from '../types/index';
 import { createActionHandler, createHandleAction } from '../utils/action-handler';
-import { getLocalizedEventyLabel } from '../utils/TimeUtils';
+import { getLocalizedEventyLabel, parseProgressStepToMilliseconds } from '../utils/TimeUtils';
 import '../utils/ErrorDisplay';
 
 export class TimeFlowCard extends LitElement {
@@ -25,6 +25,7 @@ export class TimeFlowCard extends LitElement {
   // Internal reactive state for resolved config props and countdown state
   @state() private _resolvedConfig: CardConfig = TimeFlowCard.getStubConfig();
   @state() private _progress: number = 0;
+  @state() private _totalDuration: number = 0;
   @state() private _countdown: CountdownState = {
     years: 0,
     months: 0,
@@ -683,6 +684,7 @@ export class TimeFlowCard extends LitElement {
 
     // Calculate progress (0-100)
     this._progress = await this.countdownService.calculateProgress(resolvedConfig, this.hass);
+    this._totalDuration = this.countdownService.lastTotalDuration;
 
     this.requestUpdate();
   }
@@ -1090,11 +1092,20 @@ export class TimeFlowCard extends LitElement {
     const mainProgressColor = progress_color || text_color || 'var(--progress-color, #4caf50)';
     const dimensionStyles = this.styleManager.generateCardDimensionStyles(width, height, aspect_ratio);
     const proportionalSizes = this.styleManager.calculateProportionalSizes(width, height, aspect_ratio);
-    const columns = 20;
-    const minColumns = 10;
-    const rows = 5;
+    let columns = 20;
+    let minColumns = 10;
+    let rows = 5;
     const gap = 6;
     const dotSize = 10;
+
+    const { progress_step } = this._resolvedConfig;
+    if (progress_step && this._totalDuration > 0) {
+      const stepMs = parseProgressStepToMilliseconds(progress_step);
+      const totalSteps = Math.max(1, Math.min(200, Math.floor(this._totalDuration / stepMs)));
+      rows = 1;
+      columns = totalSteps;
+      minColumns = Math.min(10, totalSteps);
+    }
 
     const cardStyles = [
       ...(cardBackground ? [`background: ${cardBackground}`, `--timeflow-card-background-color: ${cardBackground}`] : []),

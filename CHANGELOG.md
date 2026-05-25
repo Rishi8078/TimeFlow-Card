@@ -21,7 +21,7 @@ This release introduces two new card styles, header icons, and fixes the "Starti
 
 ### Fixed
 
-- **"Starting..." Display Issue** ([#33](https://github.com/Rishi8078/TimeFlow-Card/issues/33)): Card now auto-falls back to the highest available time unit instead of showing "Starting..." when the countdown begins
+- **"Starting..." Display Issue** ([#33](https://github.com/tux-84/TimeFlow-Card/issues/33)): Card now auto-falls back to the highest available time unit instead of showing "Starting..." when the countdown begins
 - **Code Cleanup**: Removed redundant custom element registration in ErrorDisplay component
 
 ### Changed

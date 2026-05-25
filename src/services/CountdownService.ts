@@ -2,16 +2,17 @@ import { TemplateService } from './TemplateService';
 import { HomeAssistant, CountdownState, CardConfig } from '../types/index';
 import { TimerEntityService, TimerData } from './Timer';
 import { LocalizeFunction } from '../utils/localize';
-import { 
-  MS_PER_SECOND, 
-  MS_PER_MINUTE, 
-  MS_PER_HOUR, 
+import {
+  MS_PER_SECOND,
+  MS_PER_MINUTE,
+  MS_PER_HOUR,
   MS_PER_DAY,
   MS_PER_WEEK,
   SECONDS_PER_MINUTE,
   SECONDS_PER_HOUR,
   parseMillisecondsToUnits,
   parseDurationInputToMilliseconds,
+  parseProgressStepToMilliseconds,
   parseSecondsToUnits,
   getUnitLabel
 } from '../utils/TimeUtils';
@@ -26,6 +27,7 @@ export class CountdownService {
   private dateParser: any;
   private timeRemaining: CountdownState;
   private expired: boolean;
+  private _lastTotalDuration: number = 0;
   // Cache last selected smart timer (for autodiscovery finished display - Alexa or Google)
   private lastAlexaTimerData: any | null;
 
@@ -423,12 +425,27 @@ export class CountdownService {
     }
 
     const totalDuration = targetDate - creationDate;
+    this._lastTotalDuration = Math.max(0, totalDuration);
+
     if (totalDuration <= 0) return 100;
 
     const elapsed = now - creationDate;
-    const progress = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
 
+    if (config.progress_step) {
+      const stepMs = parseProgressStepToMilliseconds(config.progress_step);
+      const totalSteps = Math.floor(totalDuration / stepMs);
+      if (totalSteps > 0) {
+        const elapsedSteps = Math.floor(elapsed / stepMs);
+        return this.expired ? 100 : Math.min(100, Math.max(0, (elapsedSteps / totalSteps) * 100));
+      }
+    }
+
+    const progress = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
     return this.expired ? 100 : progress;
+  }
+
+  get lastTotalDuration(): number {
+    return this._lastTotalDuration;
   }
 
   getPrimaryDisplayUnit(config: CardConfig): { value: number; unit: 'year' | 'month' | 'week' | 'day' | 'hour' | 'minute' | 'second' } {

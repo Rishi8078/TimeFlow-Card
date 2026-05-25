@@ -18,7 +18,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Rishi8078/TimeFlow-Card.git"
+    "url": "git+https://github.com/tux-84/TimeFlow-Card.git"
   },
   "keywords": [
     "home-assistant",
@@ -33,12 +33,12 @@
     "dashboard",
     "card"
   ],
-  "author": "Rishi8078",
+  "author": "tux-84",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Rishi8078/TimeFlow-Card/issues"
+    "url": "https://github.com/tux-84/TimeFlow-Card/issues"
   },
-  "homepage": "https://github.com/Rishi8078/TimeFlow-Card#readme",
+  "homepage": "https://github.com/tux-84/TimeFlow-Card#readme",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.6",
     "@rollup/plugin-json": "^6.1.0",
