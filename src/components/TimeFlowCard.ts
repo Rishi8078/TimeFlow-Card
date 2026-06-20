@@ -578,6 +578,9 @@ export class TimeFlowCard extends LitElement {
     super.connectedCallback();
     // Connect template service for WebSocket subscriptions
     this.templateService.connect();
+    if (this._initialized) {
+      this._startCountdownUpdates();
+    }
   }
 
   // Cleanup on disconnect - unsubscribe from all WebSocket connections
