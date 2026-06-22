@@ -6,6 +6,11 @@ import { TimerData } from './Timer';
  * Focused on timer.* domain entities with standard HA timer behavior
  */
 export class StandardTimerService {
+  // A standard timer.* entity has no persistent "finished" attribute.
+  // We must track the transition so isTimerExpired() can become true for standard timers.
+  // This mirrors the finished tracking caches already used for Alexa/Google.
+  private static lastKnownState = new Map<string, { wasRunning: boolean; finishedPending: boolean }>();
+
   /**
    * Handles standard HA timer data extraction
    * @param entityId - Timer entity ID
@@ -14,8 +19,8 @@ export class StandardTimerService {
    * @returns TimerData for standard timer
    */
   static getStandardTimerData(
-    entityId: string, 
-    entity: any, 
+    entityId: string,
+    entity: any,
     parseDuration: (duration: any) => number
   ): TimerData | null {
     const state = entity.state;
@@ -49,11 +54,26 @@ export class StandardTimerService {
       }
     }
 
+    // Track active/paused -> idle transitions per entity. A fresh start
+    // (active or paused again) clears the flag.
+    let cache = this.lastKnownState.get(entityId);
+    if (!cache) {
+      cache = { wasRunning: false, finishedPending: false };
+      this.lastKnownState.set(entityId, cache);
+    }
+    if (isActive || isPaused) {
+      cache.wasRunning = true;
+      cache.finishedPending = false;
+    } else if (isIdle && cache.wasRunning) {
+      cache.finishedPending = true;
+      cache.wasRunning = false;
+    }
+
     // Calculate progress (0-100)
     let progress = 0;
     if (duration > 0) {
       if (isIdle) {
-        progress = 0;
+        progress = cache.finishedPending ? 100 : 0;
       } else {
         const elapsed = duration - remaining;
         progress = Math.min(100, Math.max(0, (elapsed / duration) * 100));
