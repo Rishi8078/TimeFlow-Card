@@ -148,8 +148,15 @@ export class TimeFlowCardEditor extends LitElement {
 
     private _formChanged(ev: CustomEvent) {
         const value = ev.detail?.value || {};
+        const wasExplicit = this._config?.compact_format !== undefined;
+        const previousDisplayedCompactFormat = this._getEffectiveCompactFormat();
         // Merge with existing config and keep the card type
         const newConfig = { ...(this._config || {}), ...value, type: this._config?.type || 'custom:timeflow-card' } as CardConfig;
+
+        if (!wasExplicit && value.compact_format === previousDisplayedCompactFormat) {
+            delete newConfig.compact_format;
+        }
+
         this._config = newConfig;
         this._fireConfigChanged(newConfig);
     }
