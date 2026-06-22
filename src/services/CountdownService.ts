@@ -109,14 +109,16 @@ export class CountdownService {
       totalMilliseconds %= MS_PER_HOUR;
     } else if ((show_years || show_months || show_weeks || show_days) && !show_hours) {
       const extraHours = Math.floor(totalMilliseconds / MS_PER_HOUR);
+      const wholeDaysFromHours = Math.floor(extraHours / 24);
       if (show_days) {
-        days += roundUpHiddenUnits ? Math.ceil(extraHours / 24) : Math.floor(extraHours / 24);
+        days += wholeDaysFromHours;
+        totalMilliseconds -= wholeDaysFromHours * MS_PER_DAY;
       } else if (show_weeks) {
-        days += Math.floor(extraHours / 24);
+        days += wholeDaysFromHours;
         weeks += Math.floor(days / 7);
         days = days % 7;
+        totalMilliseconds -= wholeDaysFromHours * MS_PER_DAY;
       }
-      totalMilliseconds %= MS_PER_HOUR;
     }
 
     if (show_minutes) {
@@ -125,11 +127,14 @@ export class CountdownService {
     } else if ((show_years || show_months || show_weeks || show_days || show_hours) && !show_minutes) {
       const extraMinutes = Math.floor(totalMilliseconds / MS_PER_MINUTE);
       if (show_hours) {
-        hours += Math.floor(extraMinutes / SECONDS_PER_MINUTE);
+        const wholeHoursFromMinutes = Math.floor(extraMinutes / SECONDS_PER_MINUTE);
+        hours += wholeHoursFromMinutes;
+        totalMilliseconds -= wholeHoursFromMinutes * MS_PER_HOUR;
       } else if (show_days) {
-        days += roundUpHiddenUnits ? Math.ceil(extraMinutes / (SECONDS_PER_MINUTE * 24)) : Math.floor(extraMinutes / (SECONDS_PER_MINUTE * 24));
+        const wholeDaysFromMinutes = Math.floor(extraMinutes / (SECONDS_PER_MINUTE * 24));
+        days += wholeDaysFromMinutes;
+        totalMilliseconds -= wholeDaysFromMinutes * MS_PER_DAY;
       }
-      totalMilliseconds %= MS_PER_MINUTE;
     }
 
     if (show_seconds) {
