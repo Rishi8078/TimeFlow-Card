@@ -217,16 +217,18 @@ export class AlexaTimerService {
     // Note: Do not collapse to "No timers" based solely on a dismissed flag.
     // We'll show "timer complete" as long as a finished timer exists in sorted_all.
 
-    // 3) Label selection (prefer label from primary timer)
-    // Use extractTimerLabel to handle both timerLabel and label fields
+    // 3) Label selection - only ever from a timer we are actually showing.
+    // sorted_all is a history: it keeps cancelled and completed timers with
+    // status OFF, and its order is not stable (Alexa floats recently touched
+    // entries to the front). Reading a label out of it once nothing is active
+    // put the name of some past timer on an idle card, which is issue #46.
+    // With no timer selected the label stays undefined and the caller falls
+    // back to the device name.
     let label: string | undefined = this.extractTimerLabel(primaryTimer);
     if (!label && activeTimers.length > 0) {
+      // A timer is genuinely running, we just failed to single one out.
       const firstActive = this.extractTimerEntry(activeTimers[0]);
       label = this.extractTimerLabel(firstActive?.data);
-    }
-    if (!label && allTimers.length > 0) {
-      const firstAll = this.extractTimerEntry(allTimers[0]);
-      label = this.extractTimerLabel(firstAll?.data);
     }
 
     return {
