@@ -22,6 +22,27 @@ const MINIMAL_SQUARE_MIN_SIZE = 48;
 const MINIMAL_SQUARE_MAX_SIZE = 400;
 const MINIMAL_SQUARE_TRACK_COLOR = 'rgba(255, 255, 255, 0.08)';
 
+// Gridy 'auto' dot sizing. One dot per unit of the timeframe, with the unit
+// chosen so the grid stays readable: never fewer than MIN dots, and capped at
+// MAX so a long window can't put thousands of nodes in the DOM.
+const GRID_DOT_UNIT_MS: Record<string, number> = {
+  minute: 60000,
+  hour: 3600000,
+  day: 86400000,
+  week: 604800000,
+  month: 2629800000,   // average Gregorian month
+};
+// Finest unit first: 'auto' walks up until the dot count fits under
+// GRID_DOT_PREFERRED, so a fortnight lands on days rather than weeks.
+const GRID_DOT_UNIT_ORDER = ['minute', 'hour', 'day', 'week', 'month'] as const;
+const GRID_DOT_MIN = 4;
+const GRID_DOT_PREFERRED = 100;
+const GRID_DOT_MAX = 200;
+const GRID_ROW_MAX = 50;
+const GRID_DOT_SIZE_DEFAULT = 10;
+const GRID_DOT_SIZE_MIN = 4;
+const GRID_DOT_SIZE_MAX = 40;
+
 export class TimeFlowCard extends LitElement {
   public static async getConfigElement(): Promise<HTMLElement> {
     return document.createElement('timeflow-card-editor');
@@ -34,6 +55,7 @@ export class TimeFlowCard extends LitElement {
   // Internal reactive state for resolved config props and countdown state
   @state() private _resolvedConfig: CardConfig = TimeFlowCard.getStubConfig();
   @state() private _progress: number = 0;
+  @state() private _totalDurationMs: number = 0;
   @state() private _countdown: CountdownState = {
     years: 0,
     months: 0,
@@ -780,6 +802,7 @@ export class TimeFlowCard extends LitElement {
 
     // Calculate progress (0-100)
     this._progress = await this.countdownService.calculateProgress(resolvedConfig, this.hass);
+    this._totalDurationMs = this.countdownService.getTotalDurationMs();
 
     this.requestUpdate();
   }
@@ -1171,6 +1194,73 @@ export class TimeFlowCard extends LitElement {
   /**
    * Renders the Gridy style - title/status row with a dot-grid progress indicator.
    */
+  /**
+   * Finest unit whose dot count still fits under GRID_DOT_PREFERRED, so the grid
+   * stays readable without throwing away resolution. A fortnight lands on days
+   * (14), a month on days (30), an afternoon on hours (6), an hour on minutes.
+   */
+  private _pickGridDotUnit(totalMs: number): string {
+    for (const unit of GRID_DOT_UNIT_ORDER) {
+      if (totalMs / GRID_DOT_UNIT_MS[unit] <= GRID_DOT_PREFERRED) {
+        return unit;
+      }
+    }
+    return 'month';
+  }
+
+  /**
+   * Dot count for the gridy grid. Returns 0 to keep the fixed rows x columns
+   * grid, which is what happens when grid_dots is unset or the window is
+   * unbounded (an open-ended count_up has no timeframe to divide up).
+   */
+  /**
+   * Rows to wrap the dot grid into. 0 means auto, which lets the grid pick the
+   * shape that fits the card width. Only meaningful alongside a dot count -
+   * without one the grid keeps its fixed rows x columns shape.
+   */
+  /** Preferred dot diameter in px. Dots may still grow past this to fill the card. */
+  private _resolveGridDotSize(): number {
+    const size = Number(this._resolvedConfig.grid_dot_size);
+    if (!Number.isFinite(size) || size <= 0) {
+      return GRID_DOT_SIZE_DEFAULT;
+    }
+    return Math.max(GRID_DOT_SIZE_MIN, Math.min(Math.round(size), GRID_DOT_SIZE_MAX));
+  }
+
+  private _resolveGridRows(): number {
+    const { grid_rows } = this._resolvedConfig;
+    if (grid_rows === undefined || grid_rows === null || grid_rows === '' || grid_rows === 'auto') {
+      return 0;
+    }
+    const rows = Number(grid_rows);
+    if (!Number.isFinite(rows) || rows <= 0) {
+      return 0;
+    }
+    return Math.min(Math.floor(rows), GRID_ROW_MAX);
+  }
+
+  private _resolveGridDotCount(): number {
+    const { grid_dots, grid_dot_unit } = this._resolvedConfig;
+
+    // The visual editor hands back strings, so accept "14" as readily as 14.
+    const explicit = typeof grid_dots === 'number' ? grid_dots : Number(grid_dots);
+    if (grid_dots !== undefined && grid_dots !== null && grid_dots !== '' &&
+        Number.isFinite(explicit) && explicit > 0) {
+      return Math.max(1, Math.min(Math.floor(explicit), GRID_DOT_MAX));
+    }
+    if (grid_dots !== 'auto') return 0;
+
+    const totalMs = this._totalDurationMs;
+    if (!Number.isFinite(totalMs) || totalMs <= 0) return 0;
+
+    const unit = grid_dot_unit && grid_dot_unit !== 'auto'
+      ? grid_dot_unit
+      : this._pickGridDotUnit(totalMs);
+    const unitMs = GRID_DOT_UNIT_MS[unit] || GRID_DOT_UNIT_MS.day;
+
+    return Math.max(GRID_DOT_MIN, Math.min(Math.round(totalMs / unitMs), GRID_DOT_MAX));
+  }
+
   private _renderGridyCard(): TemplateResult {
     const {
       subtitle,
@@ -1195,7 +1285,9 @@ export class TimeFlowCard extends LitElement {
     const minColumns = 10;
     const rows = 5;
     const gap = 6;
-    const dotSize = 10;
+    const dotSize = this._resolveGridDotSize();
+    const totalDots = this._resolveGridDotCount();
+    const gridRows = this._resolveGridRows();
 
     const cardStyles = [
       ...(cardBackground ? [`background: ${cardBackground}`, `--timeflow-card-background-color: ${cardBackground}`] : []),
@@ -1247,6 +1339,8 @@ export class TimeFlowCard extends LitElement {
               .minColumns="${minColumns}"
               .rows="${rows}"
               .columns="${columns}"
+              .totalDots="${totalDots}"
+              .fixedRows="${gridRows}"
               .dotSize="${dotSize}"
               .gap="${gap}"
               aria-label="${progressAriaLabel}"

@@ -103,6 +103,9 @@ export interface ActionHandlerEvent extends Event {
 export type CardStyle = 'classic' | 'eventy' | 'classic-compact' | 'gridy' | 'minimal-square';
 export type CardMode = 'count_down' | 'count_up';
 
+// Unit each dot represents in the 'gridy' style when grid_dots is 'auto'.
+export type GridDotUnit = 'auto' | 'minute' | 'hour' | 'day' | 'week' | 'month';
+
 export interface CardConfig {
   type: string;
 
@@ -159,6 +162,12 @@ export interface CardConfig {
   secondary_color?: string;
   stroke_width?: number;
   icon_size?: number;
+
+  // Gridy dot grid
+  grid_dots?: number | 'auto' | string;   // total dots: a fixed count, or 'auto' to match the timeframe
+  grid_dot_unit?: GridDotUnit;   // what one dot means when grid_dots is 'auto' (default: picked from the span)
+  grid_rows?: number | 'auto' | string;   // rows to wrap the dots into; 'auto' fits the card width
+  grid_dot_size?: number | string;   // preferred dot diameter in px (default 10); dots may grow past it to fill the width
 
   // Progress circle background styling
   progress_bg_stroke?: string;    // Background circle stroke color (e.g., "#515751")

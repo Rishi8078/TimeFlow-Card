@@ -25,6 +25,10 @@ export class CountdownService {
   private templateService: any;
   private dateParser: any;
   private timeRemaining: CountdownState;
+  // Span of the whole countdown/count-up window in ms, captured by
+  // calculateProgress(). 0 when there is no bounded window (e.g. an open-ended
+  // count-up). Used by the gridy style to size its dot grid to the timeframe.
+  private _totalDurationMs: number = 0;
   private expired: boolean;
   // Cache last selected smart timer (for autodiscovery finished display - Alexa or Google)
   private lastAlexaTimerData: any | null;
@@ -361,11 +365,13 @@ export class CountdownService {
    */
   async calculateProgress(config: CardConfig, hass: HomeAssistant | null): Promise<number> {
     const mode = this._getMode(config);
+    this._totalDurationMs = 0;
 
     // TIMER ENTITY SUPPORT (including Alexa and Google timers)
     if (config.timer_entity && hass) {
       const timerData = TimerEntityService.getTimerData(config.timer_entity, hass);
       if (!timerData) return 0;
+      this._totalDurationMs = Math.max(0, (timerData.duration || 0) * 1000);
       return timerData.progress;
     }
 
@@ -373,6 +379,7 @@ export class CountdownService {
     if (hass) {
       const smartTimer = this._findBestSmartTimer(config, hass);
       if (smartTimer) {
+        this._totalDurationMs = Math.max(0, (smartTimer.timerData.duration || 0) * 1000);
         return smartTimer.timerData.progress;
       }
     }
@@ -395,6 +402,7 @@ export class CountdownService {
 
         if (!isNaN(goalDate) && goalDate > targetDate) {
           const totalDuration = goalDate - targetDate;
+          this._totalDurationMs = totalDuration;
           return Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
         }
       }
@@ -406,6 +414,7 @@ export class CountdownService {
 
       const cycleMs = parseDurationInputToMilliseconds(cycleInput);
       if (cycleMs > 0) {
+        this._totalDurationMs = cycleMs;
         const cycleElapsed = elapsed % cycleMs;
         return Math.min(100, Math.max(0, (cycleElapsed / cycleMs) * 100));
       }
@@ -429,6 +438,7 @@ export class CountdownService {
 
     const totalDuration = targetDate - creationDate;
     if (totalDuration <= 0) return 100;
+    this._totalDurationMs = totalDuration;
 
     const elapsed = now - creationDate;
     const progress = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
@@ -699,6 +709,14 @@ export class CountdownService {
    * Gets current time remaining
    * @returns {Object} - Time remaining object
    */
+  /**
+   * Total length of the progress window in milliseconds, as of the last
+   * calculateProgress() call. Returns 0 when the window is unbounded.
+   */
+  getTotalDurationMs(): number {
+    return this._totalDurationMs;
+  }
+
   getTimeRemaining(): CountdownState {
     return this.timeRemaining;
   }
