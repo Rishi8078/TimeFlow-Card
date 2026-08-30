@@ -523,9 +523,12 @@ export class ConfigValidator {
    * @returns {boolean} - Whether the value is a template
    */
   static isTemplate(value: any): boolean {
-    return typeof value === 'string' && 
-           value.includes('{{') && 
-           value.includes('}}');
+    if (typeof value !== 'string') return false;
+    // Expression syntax: {{ ... }}
+    if (value.includes('{{') && value.includes('}}')) return true;
+    // Statement syntax: {% if %}...{% endif %} - kept in step with
+    // TemplateService.isTemplate so validation and resolution agree.
+    return value.includes('{%') && value.includes('%}');
   }
 
   /**

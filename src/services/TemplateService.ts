@@ -229,6 +229,14 @@ export class TemplateService {
     }
 
     try {
+      // Every pattern below reads a fallback out of a single Jinja *expression*.
+      // Statement templates ({% if %}...{% endif %}) have no such trailing
+      // fallback, and running the regexes over them can only produce a bogus
+      // match, so bail out before they get the chance.
+      if (template.includes('{%')) {
+        return 'Unavailable';
+      }
+
       // Remove the outer {{ }} to work with the inner expression
       const innerTemplate = template.replace(/^\{\{\s*/, '').replace(/\s*\}\}$/, '').trim();
 
@@ -277,9 +285,13 @@ export class TemplateService {
    * @returns {boolean} - Whether the value is a template
    */
   isTemplate(value: any): boolean {
-    return typeof value === 'string' &&
-      value.includes('{{') &&
-      value.includes('}}');
+    if (typeof value !== 'string') return false;
+    // Expression syntax: {{ ... }}
+    if (value.includes('{{') && value.includes('}}')) return true;
+    // Statement syntax: {% if %}...{% endif %}. HA renders these fine, and they
+    // are the natural way to write a conditional colour or label, so a template
+    // made only of statements must not be treated as a plain string.
+    return value.includes('{%') && value.includes('%}');
   }
 
   /**
@@ -290,13 +302,17 @@ export class TemplateService {
   isValidTemplate(template: string): boolean {
     if (!template || typeof template !== 'string') return false;
 
-    // Check for basic template format
-    if (!template.includes('{{') || !template.includes('}}')) return false;
+    // Must look like a template at all - expression or statement syntax
+    if (!this.isTemplate(template)) return false;
 
-    // Check for balanced braces
+    // Check for balanced delimiters, in whichever syntax is used
     const openBraces = (template.match(/\{\{/g) || []).length;
     const closeBraces = (template.match(/\}\}/g) || []).length;
     if (openBraces !== closeBraces) return false;
+
+    const openStatements = (template.match(/\{%/g) || []).length;
+    const closeStatements = (template.match(/%\}/g) || []).length;
+    if (openStatements !== closeStatements) return false;
 
     // Check for empty template
     const content = template.replace(/\{\{\s*/, '').replace(/\s*\}\}/, '').trim();
