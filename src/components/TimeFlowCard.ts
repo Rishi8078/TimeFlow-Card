@@ -13,6 +13,15 @@ import { createActionHandler, createHandleAction } from '../utils/action-handler
 import { getLocalizedEventyLabel } from '../utils/TimeUtils';
 import '../utils/ErrorDisplay';
 
+// Minimal-square defaults. The style is designed around a thick ring with a
+// single value inside it; the type scale in _renderMinimalSquareCard() is
+// anchored to MINIMAL_SQUARE_DEFAULT_SIZE.
+const MINIMAL_SQUARE_DEFAULT_SIZE = 100;
+const MINIMAL_SQUARE_DEFAULT_STROKE = 14;
+const MINIMAL_SQUARE_MIN_SIZE = 48;
+const MINIMAL_SQUARE_MAX_SIZE = 400;
+const MINIMAL_SQUARE_TRACK_COLOR = 'rgba(255, 255, 255, 0.08)';
+
 export class TimeFlowCard extends LitElement {
   public static async getConfigElement(): Promise<HTMLElement> {
     return document.createElement('timeflow-card-editor');
@@ -81,7 +90,7 @@ export class TimeFlowCard extends LitElement {
       }
       
       /* Classic style needs minimum height, but compact styles should auto-size */
-      ha-card:not(:has(.card-content-list)):not(:has(.card-content-compact)):not(:has(.card-content-gridy)) {
+      ha-card:not(:has(.card-content-list)):not(:has(.card-content-compact)):not(:has(.card-content-gridy)):not(:has(.card-content-minimal-square)) {
         min-height: 120px;
       }
       
@@ -436,6 +445,85 @@ export class TimeFlowCard extends LitElement {
         width: 100%;
       }
 
+      /* ═══════════════════════════════════════════════════════════════════════
+         MINIMAL SQUARE LAYOUT STYLES - Single centered unit with circle
+         ═══════════════════════════════════════════════════════════════════════ */
+
+      /* The card is content-sized: getGridOptions() asks for rows: 'auto', so the
+         ring dictates the card height instead of being squeezed into a slot.
+         The host attribute is reflected in updated() so this can be scoped
+         without relying on :host(:has()) support. */
+      :host([data-card-style="minimal-square"]) ha-card {
+        border-radius: var(--timeflow-minimal-radius, 20px);
+      }
+
+      .card-content-minimal-square {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 100%;
+        padding: var(--timeflow-minimal-padding, 12px);
+        box-sizing: border-box;
+        background: inherit;
+      }
+
+      .minimal-square-progress {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-height: 0;
+      }
+
+      .minimal-square-shell {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: var(--timeflow-minimal-shell-size, 100px);
+        height: var(--timeflow-minimal-shell-size, 100px);
+        flex: 0 0 auto;
+        margin: 0 auto;
+        max-width: 100%;
+      }
+
+      .minimal-square-center {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        pointer-events: none;
+        padding: var(--timeflow-minimal-center-padding, 8px);
+        box-sizing: border-box;
+        overflow: hidden;
+      }
+
+      .minimal-square-value {
+        margin: 0;
+        max-width: 100%;
+        font-size: var(--timeflow-minimal-value-size, 1.8rem);
+        font-weight: 700;
+        line-height: 0.95;
+        white-space: nowrap;
+        color: var(--timeflow-card-text-color, inherit);
+      }
+
+      .minimal-square-unit {
+        margin: 4px 0 0;
+        font-size: var(--timeflow-minimal-unit-size, 0.52rem);
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        opacity: 0.8;
+        color: var(--timeflow-card-text-color, inherit);
+      }
+
       @media (max-width: 480px) {
         .card-content-gridy {
           gap: 12px;
@@ -592,6 +680,12 @@ export class TimeFlowCard extends LitElement {
   }
 
   updated(changedProperties: Map<string | number | symbol, unknown>): void {
+    if (changedProperties.has('config')) {
+      // Reflect the active style onto the host so layout CSS (e.g. filling the
+      // full grid-slot height for minimal-square) can target it reliably without
+      // depending on :host(:has()) support.
+      this.setAttribute('data-card-style', this.config?.style || 'classic');
+    }
     if (changedProperties.has('hass') || changedProperties.has('config')) {
       // Initialize/update localization based on Home Assistant language setting
       if (this.hass) {
@@ -715,6 +809,10 @@ export class TimeFlowCard extends LitElement {
 
     if (style === 'gridy') {
       return this._renderGridyCard();
+    }
+
+    if (style === 'minimal-square') {
+      return this._renderMinimalSquareCard();
     }
     
     // Classic: circle progress style
@@ -1160,6 +1258,104 @@ export class TimeFlowCard extends LitElement {
   }
 
   /**
+   * Renders the Minimal Square style - single centered unit inside a progress circle.
+   */
+  private _renderMinimalSquareCard(): TemplateResult {
+    const {
+      progress_color,
+      progress_bg_stroke,
+      stroke_width,
+      icon_size,
+      expired_animation = true,
+      invert_progress = false,
+      mode = 'count_down',
+      width,
+      height,
+      aspect_ratio,
+    } = this._resolvedConfig;
+
+    const { cardBackground, textColor } = this._getCardColors();
+    const displayTextColor = textColor || this._getContrastTextColor(cardBackground) || '';
+    const mainProgressColor = progress_color || textColor || 'var(--progress-color, #4caf50)';
+
+    // Ring geometry is taken straight from the config. The card is content-sized
+    // (getGridOptions asks for rows: 'auto'), so there is no slot to fit into and
+    // no need to estimate one - icon_size and stroke_width mean what they say.
+    const circleSize = Math.max(
+      MINIMAL_SQUARE_MIN_SIZE,
+      Math.min(typeof icon_size === 'number' ? icon_size : MINIMAL_SQUARE_DEFAULT_SIZE, MINIMAL_SQUARE_MAX_SIZE)
+    );
+    // Deliberately bypasses StyleManager's MIN_STROKE floor: this style is built
+    // around a thick ring, and a hairline ring is a valid look here.
+    const resolvedStroke = typeof stroke_width === 'number'
+      ? Math.max(1, Math.min(stroke_width, Math.floor(circleSize / 2)))
+      : MINIMAL_SQUARE_DEFAULT_STROKE;
+
+    // Type scale is anchored to the ring so the proportions hold at any icon_size:
+    // a 100px ring gives 1.8rem / 0.52rem, matching the reference design.
+    const valueSize = Math.max(0.9, Math.min(5, circleSize * 0.018));
+    const unitSize = Math.max(0.42, Math.min(1.2, circleSize * 0.0052));
+    const centerPadding = Math.max(6, Math.round(circleSize * 0.08));
+
+    const displayProgress = invert_progress ? 100 - this._progress : this._progress;
+    const progressAriaLabel = `${mode === 'count_up' ? 'Elapsed' : 'Countdown'} progress: ${Math.round(displayProgress)}%`;
+    const primaryUnit = this.countdownService.getPrimaryDisplayUnit(this._resolvedConfig);
+    const mainDisplay = this.countdownService.getMainDisplay(this._resolvedConfig, this.hass);
+    const hasNumericValue = /^-?\d+$/.test(mainDisplay.value);
+    const centerValue = hasNumericValue ? primaryUnit.value.toString() : mainDisplay.value;
+    const centerUnit = hasNumericValue
+      ? getLocalizedEventyLabel(primaryUnit.unit, primaryUnit.value, this._localize || undefined)
+      : '';
+
+    const dimensionStyles = this.styleManager.generateCardDimensionStyles(width, height, aspect_ratio);
+    const cardStyles = [
+      ...(cardBackground ? [`background: ${cardBackground}`, `--timeflow-card-background-color: ${cardBackground}`] : []),
+      ...(displayTextColor ? [`color: ${displayTextColor}`, `--timeflow-card-text-color: ${displayTextColor}`, `--progress-text-color: ${displayTextColor}`] : []),
+      `--timeflow-card-progress-color: ${mainProgressColor}`,
+      `--timeflow-minimal-value-size: ${valueSize}rem`,
+      `--timeflow-minimal-unit-size: ${unitSize}rem`,
+      `--timeflow-minimal-shell-size: ${circleSize}px`,
+      `--timeflow-minimal-center-padding: ${centerPadding}px`,
+      ...dimensionStyles
+    ].join('; ');
+
+    const cardClasses = this._getCardClasses(expired_animation);
+    const { configWithDefaults, shouldEnableActions } = this._getActionConfig();
+
+    return html`
+      <ha-card
+        class="${cardClasses}"
+        style="${cardStyles}"
+        ?actionHandler=${shouldEnableActions}
+        .actionHandler=${shouldEnableActions ? createActionHandler(configWithDefaults) : undefined}
+        @action=${shouldEnableActions && this.hass ? createHandleAction(this.hass, configWithDefaults) : undefined}
+      >
+        <div class="card-content-minimal-square">
+          <div class="minimal-square-progress">
+            <div class="minimal-square-shell" role="group" aria-label="${progressAriaLabel}">
+              <progress-circle
+                class="minimal-square-circle"
+                .progress="${displayProgress}"
+                .color="${mainProgressColor}"
+                .size="${circleSize}"
+                .strokeWidth="${resolvedStroke}"
+                .bgStroke="${progress_bg_stroke || MINIMAL_SQUARE_TRACK_COLOR}"
+                .bgOpacity="${this._resolvedConfig.progress_bg_opacity ?? null}"
+                aria-label="${progressAriaLabel}"
+              ></progress-circle>
+
+              <div class="minimal-square-center" aria-live="polite">
+                <p class="minimal-square-value">${centerValue}</p>
+                ${centerUnit ? html`<p class="minimal-square-unit">${centerUnit}</p>` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      </ha-card>
+    `;
+  }
+
+  /**
    * Gets the primary countdown value and unit to display in Eventy layout
    * Returns the largest non-zero unit (e.g., "11" and "DAYS")
    * Auto-switches to next available unit when current unit reaches 0 (same as Classic style)
@@ -1210,6 +1406,38 @@ export class TimeFlowCard extends LitElement {
       cardBackground: background_color || '',
       textColor: text_color || ''
     };
+  }
+
+  /**
+   * Picks a readable fallback text color for simple hex/rgb custom backgrounds.
+   * Returns empty string when the background can't be parsed, so theme defaults still apply.
+   */
+  private _getContrastTextColor(backgroundColor: string): string {
+    if (!backgroundColor) return '';
+
+    const hex = backgroundColor.trim();
+    const rgbMatch = hex.match(/^rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+    let r: number;
+    let g: number;
+    let b: number;
+
+    if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex)) {
+      const normalized = hex.length === 4
+        ? `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`
+        : hex;
+      r = parseInt(normalized.slice(1, 3), 16);
+      g = parseInt(normalized.slice(3, 5), 16);
+      b = parseInt(normalized.slice(5, 7), 16);
+    } else if (rgbMatch) {
+      r = Math.max(0, Math.min(255, Number(rgbMatch[1])));
+      g = Math.max(0, Math.min(255, Number(rgbMatch[2])));
+      b = Math.max(0, Math.min(255, Number(rgbMatch[3])));
+    } else {
+      return '';
+    }
+
+    const luminance = ((0.2126 * r) + (0.7152 * g) + (0.0722 * b)) / 255;
+    return luminance < 0.5 ? '#f5f1eb' : '#171513';
   }
 
   /**
@@ -1305,6 +1533,33 @@ export class TimeFlowCard extends LitElement {
       return 2;
     }
     return 3;
+  }
+
+  /**
+   * Helper: Returns grid sizing hints for Home Assistant Sections view.
+   * This lets compact styles claim a smaller slot instead of always taking full width.
+   */
+  getGridOptions(): { rows?: number | 'auto'; columns?: number | 'full'; min_rows?: number; max_rows?: number; min_columns?: number; max_columns?: number } | undefined {
+    const { style, grid_options } = this.config;
+
+    if (style === 'minimal-square') {
+      // Sections view: a section is 12 columns (~30px each). columns: 4 => a third of
+      // the section width, which is about as wide as the ring needs. rows: 'auto' lets
+      // the card take its height from the ring itself rather than snapping to a row
+      // count - fixing rows here is what previously left the card short or letterboxed.
+      // All of it stays overridable via grid_options in YAML or the HA size picker.
+      const go = grid_options || {};
+      return {
+        rows: go.rows ?? 'auto',
+        columns: go.columns ?? 4,
+        min_rows: go.min_rows,
+        max_rows: go.max_rows,
+        min_columns: go.min_columns ?? 2,
+        max_columns: go.max_columns,
+      };
+    }
+
+    return undefined;
   }
 
   // Static version info
