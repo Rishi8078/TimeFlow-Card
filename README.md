@@ -9,7 +9,7 @@ A beautiful, highly customizable time card for Home Assistant. Use it as a count
 
 ## Table of contents
 
-**[`Installation`](#installation)**  **[`Configuration`](#configuration)** **[`Examples`](#examples)** **[`Styling`](#styling)** **[`Templates`](#-template-support)** 
+**[`Installation`](#installation)**  **[`Configuration`](#configuration)** **[`Examples`](#examples)** **[`Styling`](#styling)** **[`Templates`](#-template-support)** **[`Featured In`](#-featured-in)**
 <br>
 
 ## Installation
@@ -814,6 +814,22 @@ card_mod:
 </details>
 
 ---
+## 📺 Featured In
+
+Thanks to everyone who has covered TimeFlow Card on YouTube.
+
+| Channel | Video |
+|---|---|
+| [ELV Elektronik](https://www.youtube.com/@elvelektronik) | [Home Assistant Weekly – Folge 46: Schnell Timer erstellen mit TimeFlow-Card](https://www.youtube.com/watch?v=-Bq_tvwlRa4) 🇩🇪 |
+| [Alles Automatisch](https://www.youtube.com/@alles-automatisch) | [Timeflow Card – Dein Countdown für Silvester und Mehr!](https://www.youtube.com/shorts/d17-S4EouS4) 🇩🇪 |
+| [Alles Automatisch](https://www.youtube.com/@alles-automatisch) | [Meine 5 liebsten Dashboard Cards für Home Assistant (HACS Edition)](https://www.youtube.com/watch?v=A5-7HkvDM8E) 🇩🇪 |
+| [Steuer dein Leben](https://www.youtube.com/@SteuerdeinLeben) | [2 geniale Timer Karten für Home Assistant – auch mit Alexa nutzbar!](https://www.youtube.com/watch?v=DjA5e2sQDo8&t=260s) 🇩🇪 |
+| [Mark Watt Tech](https://www.youtube.com/@MarkWattTech) | [5 Frontend HACS for Home Assistant (Custom Cards)](https://www.youtube.com/watch?v=wvNfXmEyGg4&t=127s) 🇬🇧 |
+| [Byte of Geek](https://www.youtube.com/@Byteofgeek) | [I Found 5 Home Assistant Dashboard Cards You NEED to See in 2026](https://www.youtube.com/watch?v=Xc7X43DSfCM) 🇬🇧 |
+
+Covered the card somewhere I've missed? [Open an issue](https://github.com/Rishi8078/TimeFlow-Card/issues) and I'll add it.
+
+---
 ## 📄 License
 
 MIT License - see the [LICENSE](https://www.google.com/search?q=LICENSE) file for details.
@@ -822,7 +838,7 @@ MIT License - see the [LICENSE](https://www.google.com/search?q=LICENSE) file fo
 
 If you find this card useful, please consider supporting its development. Your contribution helps keep the project alive and growing.
 
-<a href="https://coff.ee/rishi8078" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 40 px !important;width: 144.666px !important;" ></a>
+<a href="https://coff.ee/rishi8078" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 40px !important;width: 144.666px !important;" ></a>
 -----
 
 **TimeFlow Card - Made with ❤️ for the Home Assistant community**
