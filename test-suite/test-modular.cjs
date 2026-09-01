@@ -74,6 +74,25 @@ class ModularBuildTester {
     });
   }
 
+  /** Most recent mtime under a directory tree, or null when it holds no files. */
+  newestMtime(dir) {
+    let newest = null;
+    const walk = (current) => {
+      if (!fs.existsSync(current)) return;
+      for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+        const full = path.join(current, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+        } else {
+          const mtime = fs.statSync(full).mtime.getTime();
+          if (newest === null || mtime > newest) newest = mtime;
+        }
+      }
+    };
+    walk(dir);
+    return newest;
+  }
+
   async testBuildOutput() {
     this.log('🔨 Testing build output...');
 
@@ -89,11 +108,21 @@ class ModularBuildTester {
     const sizeOk = sizeKB >= 40 && sizeKB <= 150;
     this.addResult('Build Output: Bundle size', sizeOk, 
       `${sizeKB.toFixed(2)}KB ${sizeOk ? '(reasonable)' : '(suspicious)'}`);
-    // Test if bundle is recent (modified within last hour)
-    const ageMinutes = (Date.now() - stats.mtime.getTime()) / 60000;
-    const recentBuild = ageMinutes < 60;
-    this.addResult('Build Output: Build freshness', recentBuild,
-      `Built ${ageMinutes.toFixed(1)} minutes ago`);
+    // The bundle must not be older than the sources it was built from.
+    // Wall-clock age is the wrong test: it fails on any checkout you did not
+    // just build, including a fresh clone in CI, while saying nothing about
+    // whether the bundle is actually out of date.
+    const newestSource = this.newestMtime('src');
+    if (newestSource === null) {
+      this.addResult('Build Output: Build freshness', false, 'No sources found under src/');
+    } else {
+      const upToDate = stats.mtime.getTime() >= newestSource;
+      const skewMinutes = Math.abs(stats.mtime.getTime() - newestSource) / 60000;
+      this.addResult('Build Output: Build freshness', upToDate,
+        upToDate
+          ? `Bundle is newer than every source (by ${skewMinutes.toFixed(1)} min)`
+          : `Bundle is ${skewMinutes.toFixed(1)} min older than a source file, run npm run build`);
+    }
   }
 
   async testModuleIntegrity() {
