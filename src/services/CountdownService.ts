@@ -29,6 +29,15 @@ export class CountdownService {
   // calculateProgress(). 0 when there is no bounded window (e.g. an open-ended
   // count-up). Used by the gridy style to size its dot grid to the timeframe.
   private _totalDurationMs: number = 0;
+
+  // Entity ids the last pass consulted, for the card's shouldUpdate guard.
+  private _watchedEntities: Set<string> = new Set();
+
+  // Timer lookup memoised for one update pass; cleared by beginPass().
+  private _passTimerSource: {
+    timerData: TimerData | null;
+    smartTimer: { entityId: string; timerData: TimerData } | null;
+  } | null = null;
   private expired: boolean;
   // Cache last selected smart timer (for autodiscovery finished display - Alexa or Google)
   private lastAlexaTimerData: any | null;
@@ -229,6 +238,59 @@ export class CountdownService {
    * @param hass - Home Assistant object
    * @returns Object with chosen entity ID and timer data, or null if none found
    */
+  /**
+   * Resolves the timer backing this card, memoised for the duration of one
+   * update pass.
+   *
+   * updateCountdown() and calculateProgress() are called back to back and both
+   * need the same answer. Without the memo each one re-parsed the Alexa
+   * attributes, and for an auto-discovery card each one walked every entity in
+   * hass.states - twice the work for a value that cannot have changed in
+   * between. beginPass() is what makes the memo safe: nothing is reused across
+   * passes, so a card still notices a timer starting or stopping.
+   */
+  private _resolveTimerSource(
+    config: CardConfig,
+    hass: HomeAssistant | null
+  ): { timerData: TimerData | null; smartTimer: { entityId: string; timerData: TimerData } | null } {
+    if (this._passTimerSource) {
+      return this._passTimerSource;
+    }
+
+    let timerData: TimerData | null = null;
+    let smartTimer: { entityId: string; timerData: TimerData } | null = null;
+
+    if (config.timer_entity && hass) {
+      this._watchedEntities.add(config.timer_entity);
+      timerData = TimerEntityService.getTimerData(config.timer_entity, hass);
+    }
+    if (!timerData && hass) {
+      smartTimer = this._findBestSmartTimer(config, hass);
+    }
+
+    this._passTimerSource = { timerData, smartTimer };
+    return this._passTimerSource;
+  }
+
+  /**
+   * Starts a new update pass, discarding anything memoised for the previous one.
+   * Call this once per pass before updateCountdown()/calculateProgress().
+   */
+  beginPass(): void {
+    this._passTimerSource = null;
+    this._watchedEntities.clear();
+  }
+
+  /**
+   * Entity ids the last pass actually consulted. Used to decide whether a hass
+   * change is worth reacting to. For auto-discovery this is the set of timer
+   * entities that currently hold a timer, not every candidate on the system: a
+   * timer starting on a device that had none is picked up by the next tick.
+   */
+  getWatchedEntities(): string[] {
+    return Array.from(this._watchedEntities);
+  }
+
   private _findBestSmartTimer(
     config: CardConfig,
     hass: HomeAssistant
@@ -241,11 +303,17 @@ export class CountdownService {
 
     const smartTimers: string[] = [];
 
+    // Every candidate goes into the watch set, including devices with no timer
+    // running. Those are precisely the entities that change when someone starts
+    // a timer, so watching them makes discovery event-driven rather than
+    // something the card has to poll for.
+    const watch = (entityId: string) => this._watchedEntities.add(entityId);
+
     if (config.auto_discover_alexa) {
-      smartTimers.push(...TimerEntityService.discoverAlexaTimers(hass));
+      smartTimers.push(...TimerEntityService.discoverAlexaTimers(hass, watch));
     }
     if (config.auto_discover_google) {
-      smartTimers.push(...TimerEntityService.discoverGoogleTimers(hass));
+      smartTimers.push(...TimerEntityService.discoverGoogleTimers(hass, watch));
     }
 
     if (smartTimers.length === 0) return null;
@@ -284,9 +352,10 @@ export class CountdownService {
     try {
       const mode = this._getMode(config);
 
+      const { timerData, smartTimer } = this._resolveTimerSource(config, hass);
+
       // TIMER ENTITY SUPPORT (including Alexa timers)
       if (config.timer_entity && hass) {
-        const timerData = TimerEntityService.getTimerData(config.timer_entity, hass);
         if (timerData) {
           // Convert TimerData to CountdownState
           this.timeRemaining = this._timerDataToCountdownState(timerData);
@@ -297,7 +366,6 @@ export class CountdownService {
 
       // AUTO-DISCOVERY: Try smart assistant timers if enabled
       if (hass) {
-        const smartTimer = this._findBestSmartTimer(config, hass);
         if (smartTimer) {
           // Cache for later finished display when list becomes empty
           this.lastAlexaTimerData = smartTimer.timerData;
@@ -367,9 +435,10 @@ export class CountdownService {
     const mode = this._getMode(config);
     this._totalDurationMs = 0;
 
+    const { timerData, smartTimer } = this._resolveTimerSource(config, hass);
+
     // TIMER ENTITY SUPPORT (including Alexa and Google timers)
     if (config.timer_entity && hass) {
-      const timerData = TimerEntityService.getTimerData(config.timer_entity, hass);
       if (!timerData) return 0;
       this._totalDurationMs = Math.max(0, (timerData.duration || 0) * 1000);
       return timerData.progress;
@@ -377,7 +446,6 @@ export class CountdownService {
 
     // AUTO-DISCOVERY: Try smart assistant timers if enabled
     if (hass) {
-      const smartTimer = this._findBestSmartTimer(config, hass);
       if (smartTimer) {
         this._totalDurationMs = Math.max(0, (smartTimer.timerData.duration || 0) * 1000);
         return smartTimer.timerData.progress;
@@ -506,9 +574,12 @@ export class CountdownService {
     const mode = this._getMode(config);
     const labelStyle = mode === 'count_up' ? 'timer' : 'mainDisplay';
 
+    // Reuses the lookup memoised by the current pass; getMainDisplay runs on
+    // the render path, which can fire several times for one update.
+    const { timerData, smartTimer } = this._resolveTimerSource(config, hass ?? null);
+
     // TIMER ENTITY SUPPORT (including Alexa and Google timers)
     if (config.timer_entity && hass) {
-      const timerData = TimerEntityService.getTimerData(config.timer_entity, hass);
       if (timerData) {
         const { hours, minutes, seconds } = this.timeRemaining;
 
@@ -531,16 +602,15 @@ export class CountdownService {
 
     // AUTO-DISCOVERY: Try smart assistant timers if enabled
     if (hass) {
-      const smartTimer = this._findBestSmartTimer(config, hass);
       if (smartTimer) {
-        const { timerData } = smartTimer;
+        const { timerData: smartTimerData } = smartTimer;
         // Cache for finished view if list empties out later
-        this.lastAlexaTimerData = timerData;
+        this.lastAlexaTimerData = smartTimerData;
         // Update time remaining for proper display calculation
-        this.timeRemaining = this._timerDataToCountdownState(timerData);
+        this.timeRemaining = this._timerDataToCountdownState(smartTimerData);
         const { hours, minutes, seconds } = this.timeRemaining;
-        if (TimerEntityService.isTimerExpired(timerData)) {
-          return { value: '🔔', label: TimerEntityService.getTimerSubtitle(timerData, false) };
+        if (TimerEntityService.isTimerExpired(smartTimerData)) {
+          return { value: '🔔', label: TimerEntityService.getTimerSubtitle(smartTimerData, false) };
         }
         if (hours > 0) return { value: hours.toString(), label: getUnitLabel('hour', hours, labelStyle) };
         if (minutes > 0) return { value: minutes.toString(), label: getUnitLabel('minute', minutes, labelStyle) };
@@ -584,9 +654,11 @@ export class CountdownService {
   getSubtitle(config: CardConfig, hass: HomeAssistant | null, localize?: LocalizeFunction, useCompact: boolean = true): string {
     const t = localize || ((key: string) => key);
     const mode = this._getMode(config);
+    // Reuses the lookup memoised by the current pass, as getMainDisplay does.
+    const { timerData, smartTimer } = this._resolveTimerSource(config, hass);
+
     // TIMER ENTITY SUPPORT (Handles explicit entity)
     if (config.timer_entity && hass) {
-      const timerData = TimerEntityService.getTimerData(config.timer_entity, hass);
       if (timerData) {
         // For smart assistant timers, always use their specific subtitle logic
         if (timerData.isAlexaTimer || timerData.isGoogleTimer) {
@@ -600,13 +672,12 @@ export class CountdownService {
 
     // --- AUTO-DISCOVERY: Try smart assistant timers if enabled ---
     if (hass) {
-      const smartTimer = this._findBestSmartTimer(config, hass);
       if (smartTimer) {
-        const { timerData } = smartTimer;
+        const { timerData: smartTimerData } = smartTimer;
         // Cache for finished fallback
-        this.lastAlexaTimerData = timerData;
-        this.timeRemaining = this._timerDataToCountdownState(timerData);
-        return TimerEntityService.getTimerSubtitle(timerData, config.show_seconds !== false, localize, useCompact);
+        this.lastAlexaTimerData = smartTimerData;
+        this.timeRemaining = this._timerDataToCountdownState(smartTimerData);
+        return TimerEntityService.getTimerSubtitle(smartTimerData, config.show_seconds !== false, localize, useCompact);
       }
 
       // Check if auto-discovery was enabled but no timer found

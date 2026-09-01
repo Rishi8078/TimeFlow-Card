@@ -392,7 +392,8 @@ export class AlexaTimerService {
   static discoverAlexaTimers(
     hass: HomeAssistant,
     isAlexaTimer: (entityId: string) => boolean,
-    getTimerData: (entityId: string, hass: HomeAssistant) => TimerData | null
+    getTimerData: (entityId: string, hass: HomeAssistant) => TimerData | null,
+    onCandidate?: (entityId: string) => void
   ): string[] {
     if (!hass || !hass.states) return [];
     
@@ -400,6 +401,10 @@ export class AlexaTimerService {
     
     for (const entityId in hass.states) {
       if (isAlexaTimer(entityId)) {
+        // Report every Alexa timer sensor, not just the ones holding a timer.
+        // A device sitting idle is exactly the one that will change when someone
+        // starts a timer on it, so the caller needs it in its watch set.
+        onCandidate?.(entityId);
         const entity = hass.states[entityId];
         // Include if rich attributes indicate any timers, regardless of entity.state
         const attributes = entity.attributes || {};

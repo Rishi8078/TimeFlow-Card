@@ -61,6 +61,11 @@ export class TemplateService {
   // Flag to track connection state
   private _connected: boolean = false;
 
+  // Entity ids this card has resolved directly (e.g. target_date: sensor.foo).
+  // Accumulated rather than reset per pass: a card's config keys are stable, so
+  // the set converges immediately and never needs invalidating.
+  private _staticEntityReads: Set<string> = new Set();
+
   constructor() { }
 
   /**
@@ -82,14 +87,22 @@ export class TemplateService {
    */
   async disconnect(): Promise<void> {
     this._connected = false;
+    await this._unsubscribeAll();
+  }
 
-    // Save current results to cache before disconnecting
+  /**
+   * Drops every live subscription, keeping the results in the shared cache so a
+   * resubscribe can paint immediately. Leaves the connected flag alone: whether
+   * the service should keep subscribing is the caller's decision, not a
+   * consequence of tearing down the current set.
+   */
+  private async _unsubscribeAll(): Promise<void> {
+    // Save current results to cache before dropping the subscriptions
     this._templateResults.forEach((result, template) => {
       templateCache.set(template, result);
     });
 
-    // Unsubscribe from all templates
-    for (const [template, unsubPromise] of this._unsubRenderTemplates.entries()) {
+    for (const [, unsubPromise] of this._unsubRenderTemplates.entries()) {
       try {
         const unsub = await unsubPromise;
         unsub();
@@ -132,9 +145,15 @@ export class TemplateService {
           this._templateResults.set(template, result);
           // Also update the cache for persistence
           templateCache.set(template, result);
-          // Request card update to reflect new value
-          if (this.card && (this.card as any).requestUpdate) {
-            (this.card as any).requestUpdate();
+          // Ask the card to re-resolve, not merely to repaint. A bare
+          // requestUpdate() renders from the previous _resolvedConfig, so the
+          // new template result would not reach the screen until something
+          // else happened to trigger a recompute.
+          const card = this.card as any;
+          if (card?.requestRecompute) {
+            card.requestRecompute();
+          } else if (card?.requestUpdate) {
+            card.requestUpdate();
           }
         },
         {
@@ -322,6 +341,64 @@ export class TemplateService {
   }
 
   /**
+   * Resolves everything that does not need the template engine: an entity id
+   * becomes its state, anything else passes through.
+   *
+   * Split out so callers can avoid an await per config key. Most keys on most
+   * cards are plain strings, and awaiting each one turned a single pass into
+   * a dozen microtask hops for no reason.
+   *
+   * @param {string} value - Value to resolve
+   * @returns {string | undefined} - Resolved value
+   */
+  resolveStaticValue(value: string): string | undefined {
+    if (!value) return undefined;
+
+    const hass = this.card?.hass;
+    if (typeof value === 'string' && value.includes('.') && hass && hass.states[value]) {
+      const entity = hass.states[value];
+      if (!entity) {
+        return undefined;
+      }
+      this._staticEntityReads.add(value);
+      return entity.state;
+    }
+
+    return value;
+  }
+
+  /**
+   * Every entity this card's values depend on, and whether that set can be
+   * trusted to be complete.
+   *
+   * Templates report their own dependencies: Home Assistant returns a
+   * `listeners` block with each render result, so the watch set is computed
+   * server-side and is always correct. `all` or a domain-wide listener means
+   * the template can be affected by entities we cannot enumerate, so callers
+   * must fall back to updating on every state change.
+   */
+  getEntityDependencies(): { entities: string[]; watchAll: boolean } {
+    const entities = new Set<string>(this._staticEntityReads);
+    let watchAll = false;
+
+    this._templateResults.forEach((result) => {
+      const listeners = result?.listeners;
+      if (!listeners) {
+        watchAll = true;
+        return;
+      }
+      if (listeners.all || (listeners.domains && listeners.domains.length > 0)) {
+        watchAll = true;
+      }
+      if (Array.isArray(listeners.entities)) {
+        listeners.entities.forEach((id) => entities.add(id));
+      }
+    });
+
+    return { entities: Array.from(entities), watchAll };
+  }
+
+  /**
    * Enhanced value resolver that handles entities, templates, and plain strings
    * @param {*} value - Value to resolve
    * @returns {Promise<*>} - Resolved value
@@ -335,17 +412,7 @@ export class TemplateService {
       return result || undefined;
     }
 
-    // Handle entity state
-    const hass = this.card?.hass;
-    if (typeof value === 'string' && value.includes('.') && hass && hass.states[value]) {
-      const entity = hass.states[value];
-      if (!entity) {
-        return undefined;
-      }
-      return entity.state;
-    }
-
-    return value;
+    return this.resolveStaticValue(value);
   }
 
   /**
@@ -354,10 +421,13 @@ export class TemplateService {
    * as the subscriptions auto-update when dependencies change
    */
   clearTemplateCache(): void {
-    // Disconnect from all subscriptions
-    this.disconnect();
-    // Clear local results
+    // Drop the subscriptions without disconnecting. setConfig() calls this on
+    // every config change, and a card that is already on screen must keep
+    // subscribing afterwards - going through disconnect() cleared the connected
+    // flag and left the card with no live templates until it was re-attached.
+    this._unsubscribeAll();
     this._templateResults.clear();
+    this._staticEntityReads.clear();
   }
 
   /**

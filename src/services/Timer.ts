@@ -139,11 +139,12 @@ export class TimerEntityService {
    * @param hass - Home Assistant object
    * @returns string[] - Array of potential Alexa timer entity IDs
    */
-  static discoverAlexaTimers(hass: HomeAssistant): string[] {
+  static discoverAlexaTimers(hass: HomeAssistant, onCandidate?: (entityId: string) => void): string[] {
     return AlexaTimerService.discoverAlexaTimers(
       hass, 
       (entityId: string) => this.isAlexaTimer(entityId), 
-      (entityId: string, hass: HomeAssistant) => this.getTimerData(entityId, hass)
+      (entityId: string, hass: HomeAssistant) => this.getTimerData(entityId, hass),
+      onCandidate
     );
   }
 
@@ -152,11 +153,12 @@ export class TimerEntityService {
    * @param hass - Home Assistant object
    * @returns string[] - Array of potential Google Home timer entity IDs
    */
-  static discoverGoogleTimers(hass: HomeAssistant): string[] {
+  static discoverGoogleTimers(hass: HomeAssistant, onCandidate?: (entityId: string) => void): string[] {
     return GoogleTimerService.discoverGoogleTimers(
       hass,
       (entityId: string) => this.isGoogleTimer(entityId),
-      (entityId: string, hass: HomeAssistant) => this.getTimerData(entityId, hass)
+      (entityId: string, hass: HomeAssistant) => this.getTimerData(entityId, hass),
+      onCandidate
     );
   }
 

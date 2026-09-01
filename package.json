@@ -1,6 +1,6 @@
 {
   "name": "timeflow-card",
-  "version": "3.2",
+  "version": "3.5.1",
   "type": "module",
   "description": "A beautiful countdown timer card with progress circle and full Home Assistant template support",
   "main": "timeflow-card.js",
@@ -10,7 +10,7 @@
     "build:legacy": "node build.js",
     "build:watch": "rollup -c --watch",
     "build:dev": "rollup -c --environment NODE_ENV:development",
-    "test": "node test-suite/test-modular.cjs && node test-suite/test-integration.cjs",
+    "test": "node test-suite/test-modular.cjs && node test-suite/test-integration.cjs && node test-suite/test-countdown-fixes.cjs && node test-suite/test-alexa-timer.cjs && node test-suite/test-scheduler.cjs && node test-suite/test-update-loop.cjs",
     "test:structure": "node test-suite/test-modular.cjs",
     "test:integration": "node test-suite/test-integration.cjs",
     "test:visual": "echo 'Open test-suite/test-modular-build.html in browser for visual tests'",

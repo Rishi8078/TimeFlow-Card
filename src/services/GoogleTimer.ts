@@ -313,7 +313,8 @@ export class GoogleTimerService {
   static discoverGoogleTimers(
     hass: HomeAssistant,
     isGoogleTimer: (entityId: string) => boolean,
-    getTimerData: (entityId: string, hass: HomeAssistant) => TimerData | null
+    getTimerData: (entityId: string, hass: HomeAssistant) => TimerData | null,
+    onCandidate?: (entityId: string) => void
   ): string[] {
     if (!hass || !hass.states) return [];
     
@@ -321,6 +322,9 @@ export class GoogleTimerService {
     
     for (const entityId in hass.states) {
       if (isGoogleTimer(entityId)) {
+        // Idle devices are reported too, so the caller can watch them for the
+        // moment a timer appears. See AlexaTimerService.discoverAlexaTimers.
+        onCandidate?.(entityId);
         const entity = hass.states[entityId];
         
         // Don't skip based on entity state - Google Home entities can be "unavailable" 

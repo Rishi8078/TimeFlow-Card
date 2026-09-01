@@ -12,6 +12,7 @@ import { HomeAssistant, CountdownState, CardConfig, ActionHandlerEvent } from '.
 import { createActionHandler, createHandleAction } from '../utils/action-handler';
 import { getLocalizedEventyLabel } from '../utils/TimeUtils';
 import '../utils/ErrorDisplay';
+import { CountdownScheduler, WakePlan, IDLE_WAKE_CAP_MS } from '../utils/CountdownScheduler';
 
 // Minimal-square defaults. The style is designed around a thick ring with a
 // single value inside it; the type scale in _renderMinimalSquareCard() is
@@ -43,6 +44,7 @@ const GRID_DOT_SIZE_DEFAULT = 10;
 const GRID_DOT_SIZE_MIN = 4;
 const GRID_DOT_SIZE_MAX = 40;
 
+
 export class TimeFlowCard extends LitElement {
   public static async getConfigElement(): Promise<HTMLElement> {
     return document.createElement('timeflow-card-editor');
@@ -56,7 +58,9 @@ export class TimeFlowCard extends LitElement {
   @state() private _resolvedConfig: CardConfig = TimeFlowCard.getStubConfig();
   @state() private _progress: number = 0;
   @state() private _totalDurationMs: number = 0;
-  @state() private _countdown: CountdownState = {
+  // Not @state: nothing renders from it, so making it reactive only forced a
+  // repaint every tick. Kept because it is useful when debugging a card.
+  private _countdown: CountdownState = {
     years: 0,
     months: 0,
     weeks: 0,
@@ -66,13 +70,33 @@ export class TimeFlowCard extends LitElement {
     seconds: 0,
     total: 0
   };
+  // The one value that decides whether anything visible changed. Assigning an
+  // identical string is a no-op for Lit, so an unchanged countdown costs no
+  // repaint at all. Mirrors how ha-clock-card-digital stores formatted parts
+  // rather than a composite object.
+  @state() private _displaySignature: string = '';
+
   @state() private _expired: boolean = false;
   @state() private _validationResult: ValidationResult | null = null;
   @state() private _initialized: boolean = false; // Track initialization
   @state() private _localize: LocalizeFunction | null = null; // Localization function
 
+  // Guards requestRecompute() so a burst of template results collapses into one pass.
+  private _recomputePending: boolean = false;
+
+  // Entities whose state this card's output depends on, rebuilt each pass, plus
+  // an escape hatch for when that set cannot be known (a domain-wide or
+  // unrestricted template listener).
+  private _watchedEntities: string[] = [];
+  private _watchAllEntities: boolean = false;
+
   // Timer ID
-  private _timerId: ReturnType<typeof setInterval> | null = null;
+  // Owns the wake timer and the backoff; released on hostDisconnected.
+  private readonly _scheduler: CountdownScheduler = new CountdownScheduler(
+    this,
+    () => { this._updateCountdownAndRender(); },
+    () => this._buildWakePlan()
+  );
 
   // Services instances (could be injected if needed)
   private templateService = new TemplateService();
@@ -724,20 +748,140 @@ export class TimeFlowCard extends LitElement {
    * Starts ticking the countdown every second
    */
   _startCountdownUpdates(): void {
-    this._stopCountdownUpdates(); // clear previous interval
-    this._timerId = setInterval(() => {
-      this._updateCountdownAndRender();
-    }, 1000);
+    this._scheduler.start();
+  }
+
+  _stopCountdownUpdates(): void {
+    this._scheduler.stop();
   }
 
   /**
-   * Clears the countdown update timer
+   * Describes what the next wake has to respect.
+   *
+   * Going idle is deliberately narrow: only a finished count_down with no
+   * repeating cycle. count_up never finishes and a cycle restarts, so neither
+   * may be stopped on _expired. Anything that would revive a stopped card - a
+   * config change, a watched entity moving, a template result - runs a pass,
+   * and every pass reschedules.
    */
-  _stopCountdownUpdates(): void {
-    if (this._timerId) {
-      clearInterval(this._timerId);
-      this._timerId = null;
+  private _buildWakePlan(): WakePlan {
+    const config = this._resolvedConfig || {};
+    const mode = config.mode || 'count_down';
+    const repeats = !!config.count_up_cycle;
+
+    const idle = this._expired && mode === 'count_down' && !repeats;
+
+    // The countdown reaching zero is the one instant a backed-off card must not
+    // sleep through; it is how an Alexa timer showing only minutes still flips
+    // to complete on time.
+    const remaining = this._countdown?.total ?? 0;
+    const deadlineMs = mode !== 'count_up' && remaining > 0 ? remaining : null;
+
+    return { idle, maxIntervalMs: IDLE_WAKE_CAP_MS, deadlineMs };
+  }
+
+  /**
+   * Recomputes the set of entities this card reacts to, from what the last pass
+   * actually read: the timer entities the countdown consulted, any entity id
+   * used directly as a config value, and the dependency list Home Assistant
+   * returns alongside each rendered template.
+   */
+  private _refreshWatchedEntities(): void {
+    const fromTemplates = this.templateService.getEntityDependencies();
+    const watched = new Set<string>(fromTemplates.entities);
+    this.countdownService.getWatchedEntities().forEach((id) => watched.add(id));
+
+    this._watchedEntities = Array.from(watched);
+    this._watchAllEntities = fromTemplates.watchAll;
+  }
+
+  /**
+   * True when something outside the entity states changed in a way that affects
+   * rendering. Mirrors the non-entity half of Home Assistant's own
+   * hasConfigChanged: locale in particular matters, because updated() rebuilds
+   * the localiser from hass and a card would otherwise never notice a language
+   * change.
+   */
+  private _hassContextChanged(oldHass: any, newHass: any): boolean {
+    return (
+      oldHass.connected !== newHass.connected ||
+      oldHass.themes !== newHass.themes ||
+      oldHass.locale !== newHass.locale ||
+      oldHass.localize !== newHass.localize ||
+      oldHass.formatEntityState !== newHass.formatEntityState ||
+      oldHass.config?.state !== newHass.config?.state
+    );
+  }
+
+  /**
+   * Home Assistant assigns hass to every card on every state change anywhere in
+   * the system. Without this guard each of those triggered a full recompute and
+   * repaint, regardless of whether the card had any interest in the entity that
+   * moved.
+   *
+   * The watch set comes from what the previous pass read rather than from the
+   * config, which is what lets it cover auto-discovery and templates - neither
+   * of which names its entities in YAML. A timer starting on a device the card
+   * has never seen is picked up by the next scheduled wake instead.
+   */
+  protected shouldUpdate(changedProperties: Map<string | number | symbol, unknown>): boolean {
+    // Any internal state change is ours and always renders.
+    for (const key of changedProperties.keys()) {
+      if (key !== 'hass') {
+        return true;
+      }
     }
+
+    if (!changedProperties.has('hass') || !this._initialized) {
+      return true;
+    }
+
+    const oldHass = changedProperties.get('hass') as any;
+    const newHass = this.hass as any;
+    if (!oldHass || !newHass) {
+      return true;
+    }
+
+    if (this._hassContextChanged(oldHass, newHass)) {
+      return true;
+    }
+
+    // A template that listens to a whole domain, or to everything, cannot be
+    // narrowed down; react to any change rather than risk going stale.
+    if (this._watchAllEntities) {
+      return true;
+    }
+
+    for (const entityId of this._watchedEntities) {
+      if (oldHass.states?.[entityId] !== newHass.states?.[entityId]) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Asks for a full recompute, not just a repaint.
+   *
+   * Lit's requestUpdate() only re-renders from whatever _resolvedConfig already
+   * holds. Template results arrive outside the hass/config change path, so a
+   * bare repaint would draw the previous values; the resolution step lives in
+   * _updateCountdownAndRender() and has to be re-run. Coalesced onto a microtask
+   * so a burst of subscription callbacks costs one pass rather than one each.
+   */
+  requestRecompute(): void {
+    if (this._recomputePending) {
+      return;
+    }
+    this._recomputePending = true;
+    Promise.resolve().then(() => {
+      this._recomputePending = false;
+      if (this._validationResult?.hasCriticalErrors) {
+        return;
+      }
+      this._updateCountdownAndRender();
+    });
   }
 
   /**
@@ -770,28 +914,44 @@ export class TimeFlowCard extends LitElement {
       'header_icon_background'
     ] as const;
 
-    // Resolve templates AND entity IDs where applicable
-    // The resolveValue method handles both templates ({{ }}) and entity IDs (sensor.xxx)
-    // EXCEPTION: timer_entity should NOT be resolved - it must remain as an entity ID
-    // for TimerEntityService to look up directly via hass.states[entityId]
+    // Resolve templates AND entity IDs where applicable.
+    // Plain strings and entity ids resolve synchronously; only real templates
+    // need to be awaited, and those are awaited together rather than one at a
+    // time, so a pass costs one hop instead of one per config key.
+    // EXCEPTION: timer_entity should NOT be resolved unless it is a template -
+    // it must remain an entity ID for TimerEntityService to look up directly.
+    const pendingTemplates: Array<Promise<void>> = [];
     for (const key of templateKeys) {
-      if (typeof resolvedConfig[key] === 'string') {
-        // timer_entity should only be resolved if it's a template, not if it's a plain entity ID
-        if (key === 'timer_entity') {
-          if (this.templateService.isTemplate(resolvedConfig[key] as string)) {
-            const resolvedValue = await this.templateService.resolveValue(resolvedConfig[key] as string);
-            resolvedConfig[key] = resolvedValue || undefined;
-          }
-          // Otherwise keep the entity ID as-is
-        } else {
-          const resolvedValue = await this.templateService.resolveValue(resolvedConfig[key] as string);
-          resolvedConfig[key] = resolvedValue || undefined;
-        }
+      const value = resolvedConfig[key];
+      if (typeof value !== 'string') {
+        continue;
+      }
+
+      if (this.templateService.isTemplate(value)) {
+        pendingTemplates.push(
+          this.templateService.resolveValue(value).then((resolved) => {
+            resolvedConfig[key] = resolved || undefined;
+          })
+        );
+      } else if (key !== 'timer_entity') {
+        resolvedConfig[key] = this.templateService.resolveStaticValue(value) || undefined;
       }
     }
+    if (pendingTemplates.length > 0) {
+      await Promise.all(pendingTemplates);
+    }
 
-    // Store resolved config in reactive state
-    this._resolvedConfig = resolvedConfig;
+    // Publish the config only when something in it actually moved. It is a fresh
+    // object literal every pass and Lit compares by identity, so assigning it
+    // unconditionally guaranteed a repaint per tick. Done here rather than at
+    // the end of the pass so everything downstream reads the current values.
+    if (this._configValuesDiffer(this._resolvedConfig, resolvedConfig)) {
+      this._resolvedConfig = resolvedConfig;
+    }
+
+    // One timer lookup serves both calls below; without this each of them
+    // re-parses the timer attributes and re-walks hass.states.
+    this.countdownService.beginPass();
 
     // Calculate countdown data
     await this.countdownService.updateCountdown(resolvedConfig, this.hass);
@@ -800,11 +960,55 @@ export class TimeFlowCard extends LitElement {
     this._countdown = { ...this.countdownService.getTimeRemaining() };
     this._expired = this.countdownService.isExpired();
 
-    // Calculate progress (0-100)
-    this._progress = await this.countdownService.calculateProgress(resolvedConfig, this.hass);
+    // Calculate progress (0-100). Rounded to what the eye can resolve: a ring is
+    // a few hundred pixels around, so anything finer redraws for nothing. On a
+    // year-long countdown the raw float changes every tick and this does not.
+    const progress = await this.countdownService.calculateProgress(resolvedConfig, this.hass);
+    this._progress = Math.round(progress * 100) / 100;
     this._totalDurationMs = this.countdownService.getTotalDurationMs();
 
-    this.requestUpdate();
+    const signature = this._computeDisplaySignature();
+    const displayChanged = signature !== this._displaySignature;
+    if (displayChanged) {
+      this._displaySignature = signature;
+    }
+
+    this._refreshWatchedEntities();
+    this._scheduler.noteDisplayChanged(displayChanged);
+    this._scheduler.schedule();
+  }
+
+  /**
+   * Shallow value comparison over the union of both key sets. Nested values
+   * (grid_options, tap_action) are copied by reference from this.config, which
+   * only changes in setConfig, so reference equality is the right test for them.
+   */
+  private _configValuesDiffer(a: CardConfig, b: CardConfig): boolean {
+    const keys = new Set([...Object.keys(a || {}), ...Object.keys(b || {})]);
+    for (const key of keys) {
+      if ((a as any)?.[key] !== (b as any)?.[key]) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Everything the card puts on screen that is derived from the clock, flattened
+   * into one string. The timer lookup behind these calls is memoised for the
+   * pass, so asking for them here costs almost nothing and saves a repaint
+   * whenever the answer has not changed.
+   */
+  private _computeDisplaySignature(): string {
+    const compact = this._resolvedConfig.compact_format !== false;
+    const main = this.countdownService.getMainDisplay(this._resolvedConfig, this.hass);
+    const subtitle = this.countdownService.getSubtitle(
+      this._resolvedConfig,
+      this.hass,
+      this._localize || undefined,
+      compact
+    );
+    return `${this._getTitleText()}\u0000${main.value}\u0000${main.label}\u0000${subtitle}`;
   }
 
   render(): TemplateResult {
@@ -1658,6 +1862,6 @@ export class TimeFlowCard extends LitElement {
 
   // Static version info
   static get version() {
-    return '3.2';
+    return '3.5.1';
   }
 }
