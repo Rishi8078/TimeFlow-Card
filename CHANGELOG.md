@@ -5,6 +5,124 @@ All notable changes to TimeFlow Card will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0/).
 
+## [3.5.1] - 2026-09-01
+
+A maintenance release. No new options, but the card does far less work than it used to.
+
+### Changed
+
+- **Cards no longer react to unrelated state changes**: Home Assistant hands every card a fresh `hass` object whenever anything in the system changes, and the card recomputed from scratch each time. Cards now watch only the entities their own output depends on, derived from what they actually read: consulted timer entities, entity ids used directly as values, and the dependency list Home Assistant returns with each rendered template
+- **Idle cards no longer repaint**: a card showing "42 days" redrew itself 86,400 times a day to display the same number. It now redraws only when something visible changes
+- **Adaptive wake cadence**: the update interval backs off while nothing is changing and returns to once a second the moment something moves. Cards showing seconds are unaffected
+- **Timer lookups happen once per update** instead of four times, cutting the cost of auto-discovery cards by roughly 75%
+
+Measured over one minute, for a single card:
+
+| Card | Wakes before | Wakes after | Repaints before | Repaints after |
+|---|---|---|---|---|
+| Showing days | 60 | ~1 once settled | 180 | 0 |
+| Showing seconds | 60 | 60 | 180 | 60 |
+| Alexa timer running | 60 | 60 | 180 | 60 |
+
+Under 20 unrelated state changes per second, a countdown card went from 200 recomputations and 400 repaints to 4 and 0.
+
+### Fixed
+
+- **Editing a card no longer breaks its templates**: changing a card's configuration while it was on screen dropped its template subscriptions until the page was reloaded, freezing templated titles, colours and dates at their last value. Most visible in the visual editor
+- **Alexa and Google timer discovery reacts instantly**: auto-discovery previously found a new timer only on the card's next tick. Idle speakers are now watched too
+
+### Internal
+
+- Countdown scheduling extracted into a Lit reactive controller, following the pattern Home Assistant uses for its own timer components
+- Test suite grew from 99 checks to 140, and is now included in the repository
+
+### Notes
+
+- **Breaking Changes**: None
+- **Compatibility**: All existing configurations continue to work unchanged
+- **Browser Cache**: Clear your browser cache after updating
+
+## [3.5] - 2026-08-30
+
+Adds the Minimal Square style and makes the Gridy dot grid match the timeframe it represents.
+
+### Features
+
+- **New "Minimal Square" Style** (`style: minimal-square`): a compact square tile built around a single progress ring showing one unit at a time. Ring size and thickness follow `icon_size` and `stroke_width`; the card sizes itself to the ring in Sections view and stays overridable through `grid_options`
+- **Dynamic Dot Grid for Gridy**: `grid_dots: auto` sizes the grid to the timeframe, so a two-week countdown draws exactly 14 dots rather than a fixed 5 x 20 grid. Accompanying options:
+  - `grid_dot_unit`: pin what one dot represents (`minute`, `hour`, `day`, `week`, `month`)
+  - `grid_rows`: shape the grid, e.g. `grid_rows: 5` lays 30 days out as 6 x 5
+  - `grid_dot_size`: preferred dot diameter in pixels
+- Dots now grow to fill the card width, and the first and last dot sit flush with the card edges so grids line up across cards
+
+### Fixed
+
+- **Alexa timer name no longer sticks after a timer ends** ([#46](https://github.com/Rishi8078/TimeFlow-Card/issues/46)): Alexa keeps ended timers in the sensor's history attribute, and the card was reading a name out of that history whenever nothing was running, showing the name of a past timer on an idle card. Also fixed a related case where an unnamed running timer picked up a stale name
+- **Templates using `{% %}` statement syntax now work** ([#54](https://github.com/Rishi8078/TimeFlow-Card/issues/54)): conditional templates written with `{% if %} ... {% endif %}` were treated as plain strings and rendered literally. Both Jinja syntaxes are now recognised everywhere templates are accepted
+- Restart countdown tick when card reconnects to DOM ([#48](https://github.com/Rishi8078/TimeFlow-Card/pull/48))
+- Stop losing or overstating time when a middle unit is hidden ([#49](https://github.com/Rishi8078/TimeFlow-Card/pull/49))
+- Don't bake auto-computed `compact_format` into config in the editor ([#50](https://github.com/Rishi8078/TimeFlow-Card/pull/50))
+- Detect standard `timer.*` completion via active to idle transition ([#51](https://github.com/Rishi8078/TimeFlow-Card/pull/51))
+- Prevent duplicate card registration in `window.customCards` ([#52](https://github.com/Rishi8078/TimeFlow-Card/pull/52))
+
+### Changed
+
+- Style names in the visual editor are now plain labels (Classic, Eventy, Classic Compact, Gridy, Minimal Square), and a "Dot Grid" section appears when Gridy is selected
+
+### Localization
+
+- Norwegian localization ([#44](https://github.com/Rishi8078/TimeFlow-Card/pull/44))
+- Portuguese localization ([#45](https://github.com/Rishi8078/TimeFlow-Card/pull/45))
+
+### Notes
+
+- **Breaking Changes**: None
+- **Compatibility**: Leaving `grid_dots` unset keeps the existing 5 x 20 grid, so existing Gridy cards are unchanged
+
+## [3.4] - 2026-04-13
+
+Adds count-up mode, inverted progress, and the Gridy style.
+
+### Features
+
+- **Count-up Mode** (`mode: count_up`): count up from a given date instead of down to one, for elapsed-time displays such as time since a filter change or days since maintenance. `target_date` acts as the start date. Optional progress models:
+  - `count_up_goal_date`: fill progress from start date to goal date
+  - `count_up_cycle`: repeat progress over a fixed cycle such as `30d`, `12h`, or `24:00:00`
+- **Invert Progress** (`invert_progress: true`): the progress indicator starts full and drains instead of filling
+- **New "Gridy" Style** (`style: gridy`): a responsive dot-grid progress layout supporting countdown, count-up and inverted progress
+- **Optional Header Icons** across Classic, Eventy and Classic Compact, avoiding forced icon placeholders
+
+### Fixed
+
+- **Countdown display consistency**: day-only displays could differ between Eventy and other styles, hidden smaller units could produce misleading fallback values, and different styles could show different primary values for the same config. Countdown display logic is now shared across styles
+
+### Localization
+
+- Danish localization ([#38](https://github.com/Rishi8078/TimeFlow-Card/pull/38))
+
+### Notes
+
+- **Breaking Changes**: None
+- **Compatibility**: `mode` defaults to `count_down`, `invert_progress` defaults to `false`, and `gridy` is optional
+
+## [3.3] - 2026-02-07
+
+Adds year and week countdown units.
+
+### Features
+
+- **Year and Week units**: `show_years` and `show_weeks` extend countdown granularity for long-running countdowns. All card styles support them, and the cascade order follows natural time units: Years, Months, Weeks, Days, Hours, Minutes, Seconds
+- Localization for the new units in English, French, German, Spanish, Italian and Dutch
+
+### Fixed
+
+- **Cards appeared completely black in Firefox and Edge on Windows 11** ([#35](https://github.com/Rishi8078/TimeFlow-Card/issues/35)): the default background fell back to a hardcoded `#1a1a1a` when Home Assistant theme CSS variables did not resolve inside Shadow DOM. The fallback is now `transparent`, so the card respects system and Home Assistant theme colors
+
+### Notes
+
+- **Breaking Changes**: None
+- **Compatibility**: Year and Week units default to `false`
+
 ## [3.2.0] - 2026-01-25
 
 This release introduces two new card styles, header icons, and fixes the "Starting..." display issue.
@@ -34,6 +152,19 @@ This release introduces two new card styles, header icons, and fixes the "Starti
 - **Breaking Changes**: None
 - **New Dependencies**: None
 - **Compatibility**: Works with all existing configurations
+
+## [3.1.3] - 2026-01-19
+
+Adds custom text around the countdown display.
+
+### Features
+
+- **Subtitle prefix and suffix**: `subtitle_prefix` and `subtitle_suffix` add custom text before and after the countdown, for natural phrasing such as "Only 5 days 3 hours remaining!" or "5 days 3 hours left"
+
+### Notes
+
+- **Breaking Changes**: None
+- **Compatibility**: Both options default to empty
 
 ## [3.1.2] - 2026-01-17
 
