@@ -305,6 +305,141 @@ export class GoogleTimerService {
   }
 
   /**
+   * Every timer on this device, rather than the single one getGoogleTimerData()
+   * picks out. Used by the 'listy' style.
+   *
+   * Kept separate from getGoogleTimerData() for the same reason as the Alexa
+   * equivalent: that function's ringing/finished/earliest-fire_time priority
+   * ladder exists to fill one display slot, and none of it is needed when every
+   * timer gets a row of its own.
+   *
+   * @param entityId - Google Home timer entity ID
+   * @param entity - Entity state object
+   * @param parseDuration - Duration parsing utility function
+   * @returns TimerData[] - One entry per live timer, unsorted
+   */
+  static parseAllTimers(
+    entityId: string,
+    entity: any,
+    parseDuration: (duration: any) => number
+  ): TimerData[] {
+    const attributes = entity?.attributes || {};
+    const rawTimers = attributes.timers || [];
+    if (!Array.isArray(rawTimers) || rawTimers.length === 0) {
+      return [];
+    }
+
+    const device = this.extractDeviceName(entityId, attributes);
+    const nowMs = Date.now();
+    const nowSec = nowMs / 1000;
+
+    let entityCache = this.googleIdCache.get(entityId);
+    if (!entityCache) {
+      entityCache = {};
+      this.googleIdCache.set(entityId, entityCache);
+    }
+    if (!entityCache.pausedSnapshots) {
+      entityCache.pausedSnapshots = new Map();
+    }
+    const snapshots = entityCache.pausedSnapshots;
+
+    const timers: TimerData[] = [];
+
+    for (const raw of rawTimers) {
+      const status = String(raw?.status || '').toLowerCase().trim();
+      if (status !== 'set' && status !== 'ringing' && status !== 'paused') {
+        continue;
+      }
+
+      const timerId = String(raw?.timer_id ?? `${entityId}:${timers.length}`);
+      const duration = typeof raw?.duration === 'number'
+        ? raw.duration
+        : parseDuration(raw?.duration || '0');
+
+      const isRinging = status === 'ringing';
+      const isPaused = status === 'paused';
+
+      let remaining = 0;
+      let finishesAt: Date | null = null;
+      let finished = isRinging;
+
+      if (isPaused) {
+        // The payload carries no remaining time for a paused timer, so the last
+        // value seen while it was running is the only honest answer. Falling
+        // back to the full duration is wrong but bounded, and is what the
+        // single-timer path does after a Home Assistant restart.
+        const snapshot = snapshots.get(timerId);
+        remaining = snapshot ? snapshot.remaining : duration;
+        snapshots.set(timerId, { remaining, pausedAt: nowSec, wasActive: false });
+      } else if (isRinging) {
+        remaining = 0;
+      } else {
+        const fireTimeMs = raw?.fire_time ? raw.fire_time * 1000 : 0;
+        if (fireTimeMs > nowMs) {
+          remaining = Math.max(0, Math.floor((fireTimeMs - nowMs) / 1000));
+          finishesAt = new Date(fireTimeMs);
+          // Recorded for every running timer, not just the one on display, so a
+          // pause on any row keeps a usable remaining time.
+          snapshots.set(timerId, { remaining, pausedAt: nowSec, wasActive: true });
+        } else {
+          finished = true;
+          snapshots.delete(timerId);
+        }
+      }
+
+      let progress = 0;
+      if (duration > 0) {
+        const elapsed = Math.max(0, duration - remaining);
+        progress = Math.min(100, Math.max(0, (elapsed / duration) * 100));
+      }
+      if (finished) {
+        progress = 100;
+      }
+
+      timers.push({
+        isActive: !isPaused && !finished,
+        isPaused,
+        duration,
+        remaining,
+        finishesAt,
+        progress,
+        finished,
+        isGoogleTimer: true,
+        userDefinedLabel: raw?.label || undefined,
+        googleTimerId: timerId,
+        googleTimerStatus: isRinging ? 'ringing' : (isPaused ? 'paused' : 'set'),
+        timerId,
+        entityId,
+        deviceName: device,
+      });
+    }
+
+    return timers;
+  }
+
+  /**
+   * Best available human name for the device behind a Google Home timer entity.
+   * The integration names the sensor "<device> timers", so the suffix is
+   * stripped rather than shown on every row.
+   */
+  private static extractDeviceName(entityId: string, attributes: any): string {
+    const friendly = attributes?.friendly_name;
+    if (typeof friendly === 'string' && friendly.trim()) {
+      const cleaned = friendly.replace(/\s*timers$/i, '').trim();
+      if (cleaned) return cleaned;
+    }
+
+    const fromId = entityId
+      .replace(/^sensor\./, '')
+      .replace(/_timers$/, '')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (l) => l.toUpperCase())
+      .trim();
+
+    return fromId || 'Google Home';
+  }
+
+  /**
    * AUTO-DISCOVERY: Finds Google Home entities with timers in a displayable state.
    * @param hass - Home Assistant object
    * @param isGoogleTimer - Google timer detection function

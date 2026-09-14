@@ -685,6 +685,86 @@ async function churn(label, config, hassOpts, { changesPerSecond = 20, seconds =
   mount.card.disconnectedCallback();
 }
 
+// Passes share CountdownService instances and await mid-way, so two running at
+// once corrupt each other. Fire three back-to-back and watch the pass body.
+async function testPassesDoNotOverlap() {
+  const { card } = await mountCard(YEAR_CONFIG);
+  let inFlight = 0;
+  let maxInFlight = 0;
+  let runs = 0;
+  const runPass = card._runPass.bind(card);
+  card._runPass = async () => {
+    inFlight++;
+    runs++;
+    maxInFlight = Math.max(maxInFlight, inFlight);
+    try {
+      await flush();
+      return await runPass();
+    } finally {
+      inFlight--;
+    }
+  };
+
+  await Promise.all([
+    card._updateCountdownAndRender(),
+    card._updateCountdownAndRender(),
+    card._updateCountdownAndRender(),
+  ]);
+
+  check('Passes: overlapping calls never run two passes at once', maxInFlight === 1, `max ${maxInFlight}`);
+  check('Passes: calls made during a pass collapse into one re-run', runs === 2, `${runs} runs`);
+}
+
+// A listy card whose only rows are pinned: before the wake plan knew about
+// them there was no deadline at all, so a pinned timer could finish up to the
+// 60s backoff cap late.
+async function testPinnedRowsSetTheWakeDeadline() {
+  // No other source on purpose: the validator used to reject pinned-only listy.
+  const LISTY = { type: 'custom:timeflow-card', style: 'listy', title: 'Pinned' };
+
+  const counting = await mountCard({
+    ...LISTY,
+    countdowns: [{ title: 'Soon', target_date: '2026-09-02T00:00:00' }],
+  });
+  const plan = counting.card._buildWakePlan();
+  const remaining = counting.card._entryCountdown.getTimeRemaining().total;
+  check('Pinned: a counting row sets the wake deadline',
+    plan.deadlineMs !== null && Math.abs(plan.deadlineMs - remaining) < 1000,
+    `deadline ${plan.deadlineMs}, remaining ${remaining}`);
+
+  const up = await mountCard({
+    ...LISTY,
+    countdowns: [{ title: 'Since', target_date: '2026-01-01T00:00:00', mode: 'count_up' }],
+  });
+  check('Pinned: a count-up row sets no deadline',
+    up.card._buildWakePlan().deadlineMs === null);
+
+  const many = await mountCard({
+    ...LISTY,
+    max_timers: 1,
+    countdowns: ['A', 'B', 'C'].map((title) => ({ title, target_date: '2026-09-02T00:00:00' })),
+  });
+  check('Pinned: card size counts every pinned row past max_timers',
+    many.card.getCardSize() === 4, `size ${many.card.getCardSize()}`);
+}
+
+// A listy card whose rows hold still must not repaint: the rows array is rebuilt
+// every pass, and it used to be reactive state, so each rebuild repainted.
+async function testStillListyCardDoesNotRepaint() {
+  const mount = await mountCard({
+    type: 'custom:timeflow-card', style: 'listy', title: 'Pinned',
+    countdowns: [{ title: 'Done', target_date: '2026-01-01T00:00:00' }],
+  });
+  await mount.clock.advance(120_000);
+  mount.counters.renders = 0;
+  mount.counters.recomputes = 0;
+  await mount.clock.advance(120_000);
+  check('a listy card with still rows never repaints',
+    mount.counters.recomputes > 0 && mount.counters.renders === 0,
+    `${mount.counters.recomputes} wakes, ${mount.counters.renders} renders in 2 minutes`);
+  mount.card.disconnectedCallback();
+}
+
 // ---------------------------------------------------------------- main
 (async () => {
   console.log('\nUpdate-loop harness\n' + '='.repeat(62));
@@ -700,11 +780,14 @@ async function churn(label, config, hassOpts, { changesPerSecond = 20, seconds =
   await testNewTimerOnSecondDeviceIsFound();
   await testTemplatesSurviveAConfigChange();
   await testDaysOnlyCardDoesNotRepaint();
+  await testStillListyCardDoesNotRepaint();
   await testExpiryIsNotMissedByBackoff();
   await testLongCountdownDoesNotSpin();
   await testStoppedCardRestartsOnConfigChange();
   await testSecondsCardStillRepaints();
   await testCountUpKeepsTicking();
+  await testPassesDoNotOverlap();
+  await testPinnedRowsSetTheWakeDeadline();
 
   console.log('\nBaseline (60s of virtual time, one card)\n' + '-'.repeat(62));
   await baseline('days-only target_date', { ...DAYS_ONLY_CONFIG }, { entities: 1500 });

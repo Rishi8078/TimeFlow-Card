@@ -100,17 +100,73 @@ export interface ActionHandlerEvent extends Event {
 }
 
 // Card style options
-export type CardStyle = 'classic' | 'eventy' | 'classic-compact' | 'gridy' | 'minimal-square';
+export type CardStyle = 'classic' | 'eventy' | 'classic-compact' | 'gridy' | 'minimal-square' | 'listy';
 export type CardMode = 'count_down' | 'count_up';
 
 // Unit each dot represents in the 'gridy' style when grid_dots is 'auto'.
 export type GridDotUnit = 'auto' | 'minute' | 'hour' | 'day' | 'week' | 'month';
 
+/**
+ * One countdown pinned into a 'listy' card. A trimmed CardConfig: the fields
+ * that make sense for a single row, with the card-level ones (style, actions,
+ * dimensions) left to the card that hosts it.
+ *
+ * Named `countdowns` rather than `cards` in config: these are rows, not nested
+ * Lovelace cards, and `cards:` invites people to put `type: custom:...` in it.
+ */
+export interface ListEntryConfig {
+  /**
+   * A row can follow a timer entity instead of counting to a date. When set it
+   * wins, the same way it does at card level - CountdownService resolves the
+   * timer first and never looks at target_date.
+   */
+  timer_entity?: string;
+  target_date?: string;
+  creation_date?: string;
+  count_up_goal_date?: string;
+  count_up_cycle?: string | number;
+  mode?: CardMode;
+  title?: string;
+  subtitle?: string;
+  expired_text?: string;
+  header_icon?: string;
+  header_icon_color?: string;
+  header_icon_background?: string;
+  background_color?: string;
+  text_color?: string;
+  progress_color?: string;
+  [key: string]: any;
+}
+
+/** What the row kind decides: which icon, which tint, which ring colour. */
+export type ListRowKind = 'alexa' | 'google' | 'timer' | 'event';
+
+/**
+ * A single row of the 'listy' style, fully resolved. Building these in the
+ * update pass rather than the renderer is what lets the display signature see
+ * the list: a row's text and progress are what decides whether a repaint is
+ * worth doing.
+ */
+export interface ListRow {
+  key: string;
+  kind: ListRowKind;
+  title: string;
+  subtitle: string;
+  progress: number;
+  state: 'running' | 'paused' | 'finished';
+  icon: string;
+  iconColor?: string;
+  iconBackground?: string;
+  background?: string;
+  textColor?: string;
+  ringColor?: string;
+}
+
 export interface CardConfig {
   type: string;
 
   // Card style
-  style?: CardStyle;  // 'classic' = circle progress, 'eventy' = compact horizontal, 'classic-compact' = horizontal with circle, 'gridy' = horizontal card with dot-grid progress, 'minimal-square' = single-unit square circle card
+  style?: CardStyle;  // 'classic' = circle progress, 'eventy' = compact horizontal, 'classic-compact' = horizontal with circle, 'gridy' = horizontal card with dot-grid progress, 'minimal-square' = single-unit square circle card, 'listy' = one row per running timer
   mode?: CardMode;    // 'count_down' = time remaining, 'count_up' = time elapsed since the configured date
 
   // Basic countdown configuration
@@ -123,8 +179,22 @@ export interface CardConfig {
   timer_entity?: string;
   auto_discover_alexa?: boolean; // NEW: Automatically find and use Alexa timers
   auto_discover_google?: boolean; // NEW: Automatically find and use Google Home timers
-  alexa_device_filter?: string[];  // NEW: Only use timers from specific Alexa devices
-  prefer_labeled_timers?: boolean; // NEW: Prefer timers with labels over unnamed ones
+
+  // Multi-timer list ('listy' style)
+  max_timers?: number;            // Timer rows to draw before the list is truncated (default 5)
+  countdowns?: ListEntryConfig[]; // Countdown entries pinned to the list, alongside any discovered timers
+  // Per-source styling for the discovered rows. Colour and background are a
+  // pair: the glyph sits on the chip, so setting one without the other leaves
+  // a mismatched pill.
+  alexa_icon?: string;            // Icon for Alexa rows (default mdi:amazon-alexa)
+  alexa_color?: string;           // Alexa glyph colour
+  alexa_background?: string;      // Alexa chip background
+  alexa_ring?: string;            // Alexa progress ring; falls back to progress_color
+  google_icon?: string;           // Icon for Google Home rows (default mdi:google-home)
+  google_color?: string;          // Google glyph colour
+  google_background?: string;     // Google chip background
+  google_ring?: string;           // Google progress ring; falls back to progress_color
+  timer_icon?: string;            // Icon for standard timer.* rows (default mdi:timer-outline)
 
   // Display configuration
   title?: string;
@@ -158,8 +228,6 @@ export interface CardConfig {
   text_color?: string;
   background_color?: string;
   progress_color?: string;
-  primary_color?: string;
-  secondary_color?: string;
   stroke_width?: number;
   icon_size?: number;
 
@@ -191,14 +259,6 @@ export interface CardConfig {
   expired_animation?: boolean;
   expired_text?: string;
 
-  // Alexa-specific styling (NEW)
-  alexa_color?: string;           // Custom color for Alexa timers
-  show_alexa_device?: boolean;    // Show device name in subtitle
-  alexa_icon?: string;           // Custom icon for Alexa timers
-
-  // Debug options
-  debug?: boolean;
-  show_timer_info?: boolean;     // NEW: Show debug info about discovered timers
 
   // Allow any additional string properties to fix template key indexing
   [key: string]: any;

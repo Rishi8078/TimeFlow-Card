@@ -248,6 +248,117 @@ export class AlexaTimerService {
   }
 
   /**
+   * Every timer on this device, rather than the single one getAlexaTimerData()
+   * picks out. Used by the 'listy' style.
+   *
+   * This deliberately does not share getAlexaTimerData()'s selection code. That
+   * function exists to answer "which one timer represents this device", and most
+   * of its complexity - the finished-while-active latch, the shortest-remaining
+   * search, the sorted_all label fallback - is there to make that single choice
+   * defensible. A list has no such question to answer: each timer carries its
+   * own state, and a timer past its trigger time is simply shown as complete.
+   *
+   * @param entityId - Alexa timer entity ID
+   * @param entity - Entity state object
+   * @returns TimerData[] - One entry per live timer, unsorted
+   */
+  static parseAllTimers(entityId: string, entity: any): TimerData[] {
+    const attributes = entity?.attributes || {};
+    const activeTimers = this.parseJson(attributes.sorted_active) ?? [];
+    const allTimers = this.parseJson(attributes.sorted_all) ?? [];
+    const device = this.extractAlexaDevice(entityId, attributes);
+    const now = Date.now();
+
+    const timers: TimerData[] = [];
+    const seen = new Set<string>();
+
+    for (const raw of activeTimers) {
+      const entry = this.extractTimerEntry(raw);
+      if (!entry || seen.has(entry.id)) continue;
+      seen.add(entry.id);
+      timers.push(this.buildListEntry(entityId, entry.id, entry.data, device, now));
+    }
+
+    // sorted_all is a history: it keeps cancelled and completed timers with
+    // status OFF, so only paused entries are worth lifting out of it. Anything
+    // else there is either already in sorted_active or no longer a timer.
+    for (const raw of allTimers) {
+      const entry = this.extractTimerEntry(raw);
+      if (!entry || seen.has(entry.id)) continue;
+      if (entry.data?.status !== 'PAUSED') continue;
+      seen.add(entry.id);
+      timers.push(this.buildListEntry(entityId, entry.id, entry.data, device, now));
+    }
+
+    return timers;
+  }
+
+  /**
+   * Turns one raw Alexa timer entry into TimerData. Straight-line arithmetic:
+   * paused timers trust their remainingTime snapshot, running timers count down
+   * to triggerTime, and anything past its trigger is finished.
+   */
+  private static buildListEntry(
+    entityId: string,
+    id: string,
+    data: any,
+    device: string,
+    now: number
+  ): TimerData {
+    const rtMs = typeof data?.remainingTime === 'number' ? data.remainingTime : 0;
+    const odMs = typeof data?.originalDurationInMillis === 'number' ? data.originalDurationInMillis : 0;
+    const trig = typeof data?.triggerTime === 'number' ? data.triggerTime : 0;
+    const isPaused = data?.status === 'PAUSED';
+
+    const duration = Math.max(0, Math.floor(odMs / 1000));
+    let remaining = 0;
+    let finishesAt: Date | null = null;
+    let finished = false;
+
+    if (isPaused) {
+      remaining = Math.max(0, Math.floor(rtMs / 1000));
+    } else if (trig > now) {
+      remaining = Math.max(0, Math.floor((trig - now) / 1000));
+      finishesAt = new Date(trig);
+    } else if (!trig && rtMs > 0) {
+      // No trigger time to count down to; fall back to the snapshot.
+      remaining = Math.max(0, Math.floor(rtMs / 1000));
+      finishesAt = new Date(now + remaining * 1000);
+    } else {
+      finished = true;
+    }
+
+    let progress = 0;
+    if (duration > 0) {
+      const elapsed = Math.max(0, duration - remaining);
+      progress = Math.min(100, Math.max(0, (elapsed / duration) * 100));
+    }
+    if (finished) {
+      progress = 100;
+    }
+
+    const label = this.extractTimerLabel(data);
+
+    return {
+      isActive: !isPaused && !finished,
+      isPaused,
+      duration,
+      remaining,
+      finishesAt,
+      progress,
+      finished,
+      isAlexaTimer: true,
+      alexaDevice: device,
+      timerLabel: label ?? device,
+      timerStatus: isPaused ? 'PAUSED' : (finished ? 'OFF' : 'ON'),
+      userDefinedLabel: label,
+      timerId: id,
+      entityId,
+      deviceName: device,
+    };
+  }
+
+  /**
    * Legacy fallback for Alexa timer parsing (when rich attributes unavailable)
    * @param entityId - Entity ID
    * @param entity - Entity object

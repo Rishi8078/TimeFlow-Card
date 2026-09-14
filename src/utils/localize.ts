@@ -17,6 +17,7 @@ const languages: Record<string, LanguageRecord> = {
       ready: 'Ready',
       ready_with_time: 'Ready - {time}',
       no_timers: 'No timers',
+      list_quiet: 'All quiet across devices',
       no_timers_device: 'No timers on {device}',
       no_timers_google: 'No Google Home timers',
       remaining: '{time} remaining',

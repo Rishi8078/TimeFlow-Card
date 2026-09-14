@@ -16,6 +16,9 @@ import {
   getUnitLabel
 } from '../utils/TimeUtils';
 
+/** Rows the 'listy' style draws when max_timers is not set. */
+const DEFAULT_MAX_TIMERS = 5;
+
 /**
  * CountdownService - Enhanced with Alexa Timer support
  * Handles countdown calculations and time unit management
@@ -289,6 +292,98 @@ export class CountdownService {
    */
   getWatchedEntities(): string[] {
     return Array.from(this._watchedEntities);
+  }
+
+  /**
+   * Folds an entity read elsewhere into this pass's watch set. The 'listy'
+   * style evaluates its pinned entries through a second CountdownService, and
+   * whatever those entries consulted still has to reach the card's
+   * shouldUpdate guard.
+   */
+  noteWatchedEntity(entityId: string): void {
+    if (entityId) {
+      this._watchedEntities.add(entityId);
+    }
+  }
+
+  /**
+   * Every live timer this card can see, flattened across devices and ordered the
+   * way a list wants to read them. Backs the 'listy' style; nothing else calls
+   * it, so the single-timer path pays none of its cost.
+   *
+   * Two sources feed it, matching the rest of the card: an explicit
+   * timer_entity if one is configured, otherwise whatever auto-discovery finds.
+   * Both go through TimerEntityService.listTimers, so a device running four
+   * timers contributes four rows rather than one.
+   *
+   * @param config - Resolved card config
+   * @param hass - Home Assistant object
+   * @returns TimerData[] - Sorted, capped list of timers to display
+   */
+  listAllTimers(config: CardConfig, hass: HomeAssistant | null): TimerData[] {
+    if (!hass) return [];
+
+    const entityIds: string[] = [];
+
+    if (config.timer_entity) {
+      entityIds.push(config.timer_entity);
+    } else {
+      // Every candidate is watched, including idle devices: those are exactly
+      // the entities that change when someone starts a timer. Same reasoning as
+      // _findBestSmartTimer.
+      const watch = (entityId: string) => this._watchedEntities.add(entityId);
+      if (config.auto_discover_alexa) {
+        entityIds.push(...TimerEntityService.discoverAlexaTimers(hass, watch));
+      }
+      if (config.auto_discover_google) {
+        entityIds.push(...TimerEntityService.discoverGoogleTimers(hass, watch));
+      }
+    }
+
+    const timers: TimerData[] = [];
+    const seen = new Set<string>();
+
+    for (const entityId of entityIds) {
+      if (seen.has(entityId)) continue;
+      seen.add(entityId);
+      this._watchedEntities.add(entityId);
+      timers.push(...TimerEntityService.listTimers(entityId, hass));
+    }
+
+    timers.sort(CountdownService.compareTimersForDisplay);
+
+    const max = CountdownService.resolveMaxTimers(config);
+    return timers.length > max ? timers.slice(0, max) : timers;
+  }
+
+  /**
+   * Row order: anything finished sits at the top because it is asking to be
+   * dealt with, then running timers soonest-first, then paused ones. Ties break
+   * on label so the order does not wobble between passes when two timers share a
+   * remaining time.
+   */
+  private static compareTimersForDisplay(a: TimerData, b: TimerData): number {
+    const rank = (t: TimerData): number => {
+      if (t.finished) return 0;
+      if (t.isActive) return 1;
+      return 2;
+    };
+
+    const rankDiff = rank(a) - rank(b);
+    if (rankDiff !== 0) return rankDiff;
+
+    if (a.remaining !== b.remaining) return a.remaining - b.remaining;
+
+    const labelA = a.userDefinedLabel || a.deviceName || '';
+    const labelB = b.userDefinedLabel || b.deviceName || '';
+    return labelA.localeCompare(labelB);
+  }
+
+  /** How many rows the list style will draw. Defaults to 5, clamped to 1-20. */
+  static resolveMaxTimers(config: CardConfig): number {
+    const raw = Number(config.max_timers);
+    if (!Number.isFinite(raw)) return DEFAULT_MAX_TIMERS;
+    return Math.min(20, Math.max(1, Math.floor(raw)));
   }
 
   private _findBestSmartTimer(

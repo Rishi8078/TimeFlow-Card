@@ -46,7 +46,7 @@ class IntegrationTester {
 
       // Check bundle size (should be larger due to TypeScript compilation)
       const sizeKB = bundleContent.length / 1024;
-      this.addResult('Bundle Loading: Size check', sizeKB > 40 && sizeKB < 150, 
+      this.addResult('Bundle Loading: Size check', sizeKB > 40 && sizeKB < 250, 
         `Bundle size: ${sizeKB.toFixed(2)}KB`);
 
       // Check for Rollup bundle structure

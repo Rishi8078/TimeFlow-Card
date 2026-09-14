@@ -23,6 +23,12 @@ export interface TimerData {
   isGoogleTimer?: boolean;
   googleTimerId?: string; // Google Home timer_id for tracking
   googleTimerStatus?: "none" | "set" | "ringing" | "paused"; // Google Home timer status (includes ringing)
+  // Set only by the list parsers (see listTimers). The single-timer path leaves
+  // these undefined, because there the card already knows which entity it asked
+  // about and has no second timer to tell this one apart from.
+  timerId?: string;   // Stable per-timer id: Alexa id, Google timer_id
+  entityId?: string;  // Entity this timer was read from
+  deviceName?: string; // Device the timer belongs to, for rows spanning devices
 }
 
 /**
@@ -134,6 +140,55 @@ export class TimerEntityService {
       this.parseDuration
     );
   }
+  /**
+   * Every timer held by one entity, where getTimerData() returns only the timer
+   * that best represents it.
+   *
+   * Alexa and Google devices can each run several timers at once and publish all
+   * of them, so those expand into as many entries as they hold. A standard
+   * timer.* entity is one timer by definition, so it yields at most one, and
+   * only when there is something to show.
+   *
+   * @param entityId - Timer entity ID
+   * @param hass - Home Assistant object
+   * @returns TimerData[] - Live timers on this entity, unsorted
+   */
+  static listTimers(entityId: string, hass: HomeAssistant): TimerData[] {
+    if (!hass || !entityId || !this.isTimerEntity(entityId)) {
+      return [];
+    }
+
+    const entity = hass.states[entityId];
+    if (!entity) {
+      return [];
+    }
+
+    if (this.isAlexaTimer(entityId)) {
+      return AlexaTimerService.parseAllTimers(entityId, entity);
+    }
+
+    if (this.isGoogleTimer(entityId)) {
+      return GoogleTimerService.parseAllTimers(entityId, entity, this.parseDuration);
+    }
+
+    const standard = StandardTimerService.getStandardTimerData(
+      entityId,
+      entity,
+      this.parseDuration
+    );
+    if (!standard || (!standard.isActive && !standard.isPaused)) {
+      return [];
+    }
+
+    return [{
+      ...standard,
+      timerId: entityId,
+      entityId,
+      deviceName: entity.attributes?.friendly_name || entityId,
+      userDefinedLabel: standard.userDefinedLabel ?? entity.attributes?.friendly_name,
+    }];
+  }
+
   /**
    * AUTO-DISCOVERY: Attempts to find Alexa timer entities in Home Assistant
    * @param hass - Home Assistant object

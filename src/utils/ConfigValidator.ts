@@ -58,8 +58,9 @@ export class ConfigValidator {
           value: config.target_date
         });
       }
-    } else if (!config.timer_entity && !config.auto_discover_alexa && !config.auto_discover_google) {
-      // target_date is only required if timer_entity, auto_discover_alexa, and auto_discover_google are not provided
+    } else if (!config.timer_entity && !config.auto_discover_alexa && !config.auto_discover_google
+      && !(config.style === 'listy' && Array.isArray(config.countdowns) && config.countdowns.length)) {
+      // target_date is only required if no other source (timer_entity, discovery, listy pinned rows) is provided
       errors.push({
         field: 'target_date',
         message: 'Either "target_date", "timer_entity", "auto_discover_alexa", or "auto_discover_google" must be provided',
