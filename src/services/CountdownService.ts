@@ -282,6 +282,11 @@ export class CountdownService {
   beginPass(): void {
     this._passTimerSource = null;
     this._watchedEntities.clear();
+    // updateCountdown() returns early with no target or no timer found; without
+    // this the listy card's shared entry service handed that row the previous
+    // row's time and expiry.
+    this.timeRemaining = this._buildZeroState();
+    this.expired = false;
   }
 
   /**

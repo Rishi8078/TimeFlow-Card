@@ -442,6 +442,13 @@ export class TimeFlowCardEditor extends LitElement {
     private _setStyle(next: string | undefined): void {
         if (!next || next === (this._config.style || 'classic')) return;
         const updated = { ...this._config, style: next } as CardConfig;
+        // The list has no card-level entity field, yet listAllTimers() would still
+        // follow it and ignore discovery. Carry it over as a pinned row instead,
+        // where it stays visible and removable.
+        if (next === 'listy' && updated.timer_entity) {
+            updated.countdowns = [...(updated.countdowns ?? []), { timer_entity: updated.timer_entity }];
+            delete updated.timer_entity;
+        }
         this._config = updated;
         this._fireConfigChanged(updated);
     }

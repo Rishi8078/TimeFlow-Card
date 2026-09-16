@@ -1,5 +1,6 @@
 import { LitElement, html, css, CSSResult, TemplateResult, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
+import { keyed } from 'lit/directives/keyed.js';
 import { ListEntryConfig, subscribeRenderTemplate, UnsubscribeFunc } from '../types/index';
 import { HaFormTfTemplate } from './ha-form-tf-template';
 import './ha-form-tf-group';
@@ -196,6 +197,7 @@ export class HaFormTfCountdowns extends LitElement {
     this._loaded = shift(this._loaded);
     this._pendingSource = shift(this._pendingSource);
     this._yamlMode = shift(this._yamlMode);
+    this._structure++;
 
     this._emit(entries);
   }
@@ -232,7 +234,16 @@ export class HaFormTfCountdowns extends LitElement {
     this._expanded = remap(this._expanded);
     this._loaded = remap(this._loaded);
     this._pendingSource = remap(this._pendingSource as any) as any;
+    this._yamlMode = remap(this._yamlMode);
+    this._structure++;
   }
+
+  /**
+   * Bumped whenever entries change places. Panels are keyed by index, and
+   * ha-yaml-editor reads defaultValue only once, so a reused editor kept the
+   * previous entry's YAML and wrote it over the entry now in its slot.
+   */
+  private _structure = 0;
 
   private _sourceOf(index: number): EntrySource {
     const entry = this._entries[index];
@@ -444,13 +455,13 @@ export class HaFormTfCountdowns extends LitElement {
 
         <div class="entry-body">
           ${this._loaded[index] && this._yamlMode[index]
-            ? html`
+            ? keyed(this._structure, html`
               <ha-yaml-editor
                 .defaultValue=${entry}
                 .readOnly=${this.disabled}
                 @value-changed=${(e: CustomEvent) => this._entryYamlChanged(index, e)}
               ></ha-yaml-editor>
-            `
+            `)
             : nothing}
 
           ${this._loaded[index] && !this._yamlMode[index]

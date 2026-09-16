@@ -739,6 +739,20 @@ async function testPinnedRowsSetTheWakeDeadline() {
   check('Pinned: a count-up row sets no deadline',
     up.card._buildWakePlan().deadlineMs === null);
 
+  // A freshly added entry has an empty target_date; it used to inherit the
+  // expired row above it through the shared entry service.
+  const added = await mountCard({
+    ...LISTY,
+    countdowns: [
+      { title: 'Done', target_date: '2026-01-01T00:00:00' },
+      { title: 'New', target_date: '' },
+    ],
+  });
+  const [done, fresh] = added.card._listRows;
+  check('Pinned: a blank row does not inherit the row above',
+    done.state === 'finished' && fresh.state !== 'finished' && fresh.subtitle !== done.subtitle,
+    `above ${done.state} "${done.subtitle}", blank ${fresh.state} "${fresh.subtitle}"`);
+
   const many = await mountCard({
     ...LISTY,
     max_timers: 1,
@@ -765,6 +779,43 @@ async function testStillListyCardDoesNotRepaint() {
   mount.card.disconnectedCallback();
 }
 
+// The pinned-countdowns editor keeps per-entry panel state by index. Removing an
+// entry above one open in YAML used to leave YAML mode on the old index, so the
+// next entry down opened onto the removed one's stale YAML box.
+async function testYamlModeFollowsItsEntry() {
+  const context = loadBundle(createClock(Date.UTC(2026, 7, 31, 12, 0, 0)));
+  context.CustomEvent = class { constructor(type, init = {}) { this.type = type; this.detail = init.detail; } };
+  const Editor = context.customElements.get('ha-form-tf_countdowns');
+  const editor = new Editor();
+  editor.data = [{ title: 'A' }, { title: 'B' }, { title: 'C' }];
+
+  editor._toggleYaml(1);
+  const structure = editor._structure;
+  editor._remove(0);
+
+  check('Editor: YAML mode follows its entry when one above is removed',
+    editor._yamlMode[0] === true && !editor._yamlMode[1] && editor._structure > structure,
+    `yamlMode ${JSON.stringify(editor._yamlMode)}, structure ${structure} -> ${editor._structure}`);
+}
+
+// The listy editor has no card-level entity field, but the card still followed a
+// leftover timer_entity and ignored discovery; switching style used to keep it
+// hidden in the config.
+async function testListyStyleCarriesTimerEntityOver() {
+  const context = loadBundle(createClock(Date.UTC(2026, 7, 31, 12, 0, 0)));
+  context.CustomEvent = class { constructor(type, init = {}) { this.type = type; this.detail = init.detail; } };
+  const Editor = context.customElements.get('timeflow-card-editor');
+  const editor = new Editor();
+  editor._config = { type: 'custom:timeflow-card', timer_entity: 'timer.pasta', auto_discover_alexa: true };
+
+  editor._setStyle('listy');
+
+  const cfg = editor._config;
+  check('Editor: switching to listy moves timer_entity into a pinned row',
+    !cfg.timer_entity && cfg.countdowns?.length === 1 && cfg.countdowns[0].timer_entity === 'timer.pasta',
+    JSON.stringify(cfg));
+}
+
 // ---------------------------------------------------------------- main
 (async () => {
   console.log('\nUpdate-loop harness\n' + '='.repeat(62));
@@ -781,6 +832,8 @@ async function testStillListyCardDoesNotRepaint() {
   await testTemplatesSurviveAConfigChange();
   await testDaysOnlyCardDoesNotRepaint();
   await testStillListyCardDoesNotRepaint();
+  await testYamlModeFollowsItsEntry();
+  await testListyStyleCarriesTimerEntityOver();
   await testExpiryIsNotMissedByBackoff();
   await testLongCountdownDoesNotSpin();
   await testStoppedCardRestartsOnConfigChange();
