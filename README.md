@@ -53,6 +53,8 @@ If `timer_entity` or smart-timer auto-discovery is used, timer data takes priori
 | `timer_entity` | string | `null` | Home Assistant `timer`, `sensor`, or `input_datetime` entity. Overrides date-based display logic. |
 | `auto_discover_alexa` | boolean | `false` | Automatically discover Alexa timer entities from the Alexa Media Player integration. |
 | `auto_discover_google` | boolean | `false` | Automatically discover Google Home timer entities from the HA Google Home integration. |
+| `auto_discover_voice_satellite` | boolean | `false` | Automatically discover timers held by Voice Satellite `assist_satellite` entities. |
+| `hide_when_inactive` | boolean | `false` | Remove the card from the view while there is nothing to count: before the start date, and once the target or goal date has passed. |
 | `title` | string | auto | Card title. Falls back to an automatic title when omitted. Supports templates. |
 | `subtitle` | string | `null` | Optional subtitle override. Supports templates. |
 | `subtitle_prefix` | string | `null` | Text prepended to the generated subtitle, such as `in` or `Only`. |

@@ -2,6 +2,7 @@ import { HomeAssistant } from '../types/index';
 import { StandardTimerService } from './StandardTimer';
 import { AlexaTimerService } from './AlexaTimer';
 import { GoogleTimerService } from './GoogleTimer';
+import { VoiceSatelliteTimerService } from './VoiceSatelliteTimer';
 import { LocalizeFunction } from '../utils/localize';
 
 export interface TimerData {
@@ -21,6 +22,8 @@ export interface TimerData {
   userDefinedLabel?: string; // User-defined timer label (e.g., "Pizza")
   // NEW: Google Home specific properties
   isGoogleTimer?: boolean;
+  // NEW: Voice Satellite (assist_satellite active_timers)
+  isVoiceSatelliteTimer?: boolean;
   googleTimerId?: string; // Google Home timer_id for tracking
   googleTimerStatus?: "none" | "set" | "ringing" | "paused"; // Google Home timer status (includes ringing)
   // Set only by the list parsers (see listTimers). The single-timer path leaves
@@ -48,6 +51,9 @@ export class TimerEntityService {
     
     // Standard HA timers
     if (entityId.startsWith('timer.')) return true;
+
+    // Voice Satellite: timers ride on the satellite entity itself
+    if (this.isVoiceSatelliteTimer(entityId)) return true;
     
     // Alexa Media Player timer sensors
     if (entityId.includes('_next_timer') || 
@@ -79,6 +85,15 @@ export class TimerEntityService {
     return entityId.includes('_next_timer') || 
            entityId.includes('alexa_timer') || 
            (entityId.startsWith('sensor.') && entityId.includes('alexa') && entityId.includes('timer'));
+  }
+
+  /**
+   * Checks if entity is a Google Home timer specifically
+   * @param entityId - Entity ID to check
+   * @returns boolean - Whether this is a Google Home timer
+   */
+  static isVoiceSatelliteTimer(entityId: string): boolean {
+    return VoiceSatelliteTimerService.isVoiceSatelliteTimer(entityId);
   }
 
   /**
@@ -133,6 +148,11 @@ export class TimerEntityService {
       );
     }
 
+    // Handle Voice Satellite timers
+    if (this.isVoiceSatelliteTimer(entityId)) {
+      return VoiceSatelliteTimerService.getVoiceSatelliteTimerData(entityId, entity);
+    }
+
     // Handle standard HA timers
     return StandardTimerService.getStandardTimerData(
       entityId, 
@@ -169,6 +189,10 @@ export class TimerEntityService {
 
     if (this.isGoogleTimer(entityId)) {
       return GoogleTimerService.parseAllTimers(entityId, entity, this.parseDuration);
+    }
+
+    if (this.isVoiceSatelliteTimer(entityId)) {
+      return VoiceSatelliteTimerService.parseAllTimers(entityId, entity);
     }
 
     const standard = StandardTimerService.getStandardTimerData(
@@ -215,6 +239,18 @@ export class TimerEntityService {
       (entityId: string, hass: HomeAssistant) => this.getTimerData(entityId, hass),
       onCandidate
     );
+  }
+
+  /**
+   * AUTO-DISCOVERY: every Voice Satellite that can hold timers
+   * @param hass - Home Assistant object
+   * @returns string[] - Satellite entity ids currently holding timers
+   */
+  static discoverVoiceSatelliteTimers(
+    hass: HomeAssistant,
+    onCandidate?: (entityId: string) => void
+  ): string[] {
+    return VoiceSatelliteTimerService.discoverVoiceSatelliteTimers(hass, onCandidate);
   }
 
   /**
@@ -381,6 +417,15 @@ export class TimerEntityService {
         return timerData.userDefinedLabel;
       }
       return this.formatGoogleTimerName(entityId);
+    }
+
+    // Handle Voice Satellite timers
+    if (this.isVoiceSatelliteTimer(entityId)) {
+      const timerData = VoiceSatelliteTimerService.getVoiceSatelliteTimerData(entityId, entity);
+      if (timerData?.userDefinedLabel) {
+        return timerData.userDefinedLabel;
+      }
+      return entity.attributes.friendly_name || 'Voice Satellite';
     }
 
     // Use friendly name or fall back to entity ID

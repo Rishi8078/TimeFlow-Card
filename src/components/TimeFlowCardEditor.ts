@@ -4,7 +4,7 @@ import { CardConfig } from '../types/index';
 import '../editor/ha-form-tf-template';
 import '../editor/ha-form-tf-group';
 import '../editor/ha-form-tf-countdowns';
-import { STYLE_OPTIONS, computeExpiredSchema, computePanelsSchema, computeSourceSchema, computeTextSchema, computeCountdownsSchema, computeDiscoverySchema, computeUnitsSchema, styleSchema } from '../editor/schema';
+import { STYLE_OPTIONS, computeExpiredSchema, computePanelsSchema, computeSourceSchema, computeHideWhenInactiveSchema, computeTextSchema, computeCountdownsSchema, computeDiscoverySchema, computeUnitsSchema, styleSchema } from '../editor/schema';
 import { SourceType, applySource, availableSources, getCapabilities, getSourceType, getStyle, resolveSource, usesDateFields } from '../editor/capabilities';
 import { computeLabel, computeHelper } from '../editor/labels';
 
@@ -195,6 +195,18 @@ export class TimeFlowCardEditor extends LitElement {
                item in the section column and takes a whole gap to itself. */
             ha-tooltip {
                 display: contents;
+            }
+
+            /* Heading and control on one line, for a switch narrow enough that
+               a row of its own would be mostly empty. */
+            .editor-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+            }
+            .editor-row .editor-section-label.has-tooltip {
+                align-self: center;
             }
 
             /* A section: heading plus its fields, grouped by a faint tint
@@ -400,6 +412,33 @@ export class TimeFlowCardEditor extends LitElement {
         return html`
             <span id=${id} class="editor-section-label has-tooltip">${label}</span>
             <ha-tooltip for=${id} placement="bottom-start">${help}</ha-tooltip>
+        `;
+    }
+
+    /**
+     * hide_when_inactive: one switch whose explanation is a sentence long.
+     *
+     * Rendered outside the source form so that sentence can sit on hover
+     * instead of under the field - ha-tooltip binds by id within this shadow
+     * root, which is something nothing inside ha-form can offer.
+     */
+    private _renderHideWhenInactive(displayCfg: CardConfig, schema: unknown[]): TemplateResult {
+        return html`
+            <div class="editor-row">
+                ${this._sectionHeading(
+                    'sec-hide-inactive',
+                    'Hide When Inactive',
+                    'Removes the card from the view while there is nothing to count: before the start date, and once the target or goal date has passed.'
+                )}
+                <ha-form
+                    .hass=${this.hass}
+                    .data=${displayCfg}
+                    .schema=${schema}
+                    @value-changed=${(e: CustomEvent) => this._formChanged(e)}
+                    .computeLabel=${() => ''}
+                    .computeHelper=${() => ''}
+                ></ha-form>
+            </div>
         `;
     }
 
@@ -735,6 +774,7 @@ export class TimeFlowCardEditor extends LitElement {
 
         const source = resolveSource(displayCfg as CardConfig, this._pendingSource);
         const sourceSchema = computeSourceSchema(displayCfg as CardConfig, source);
+        const hideInactiveSchema = computeHideWhenInactiveSchema(displayCfg as CardConfig, source);
         const textSchema = computeTextSchema(displayCfg as CardConfig, source);
         const discoverySchema = computeDiscoverySchema(displayCfg as CardConfig);
         const countdownsSchema = computeCountdownsSchema(displayCfg as CardConfig);
@@ -780,6 +820,9 @@ export class TimeFlowCardEditor extends LitElement {
             ${isList ? nothing : this._renderSourcePicker(displayCfg as CardConfig, source)}
             ${dateFields}
             ${isList ? nothing : this._renderSourceFields(displayCfg as CardConfig, sourceSchema, source)}
+            ${hideInactiveSchema.length > 0
+                ? this._renderHideWhenInactive(displayCfg as CardConfig, hideInactiveSchema)
+                : nothing}
             ${isList && showsTitle ? this._renderTitleField() : nothing}
             <!-- computeLabel is deliberately not blanked here: ha-form hands it
                  down to every field inside an entry, and blanking it left them

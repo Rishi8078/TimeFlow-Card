@@ -152,7 +152,8 @@ export function getSourceType(config: CardConfig | null | undefined): SourceType
   if (!config) return 'date';
 
   if (config.timer_entity) return 'timer';
-  if (config.auto_discover_alexa || config.auto_discover_google) return 'auto';
+  if (config.auto_discover_alexa || config.auto_discover_google
+    || config.auto_discover_voice_satellite) return 'auto';
 
   // A list has no use for a date: listAllTimers() reads timer_entity or the
   // discovery flags and never target_date, so a date-driven listy card renders
@@ -194,7 +195,7 @@ export function availableSources(config: CardConfig | null | undefined): SourceT
 export const SOURCE_SELECTOR_KEYS: Record<SourceType, string[]> = {
   date: [],
   timer: ['timer_entity'],
-  auto: ['auto_discover_alexa', 'auto_discover_google'],
+  auto: ['auto_discover_alexa', 'auto_discover_google', 'auto_discover_voice_satellite'],
 };
 
 /**
@@ -234,7 +235,8 @@ export function applySource(config: CardConfig, next: SourceType): CardConfig {
   // Discovery needs at least one integration switched on, or the card would
   // have no source at all and the picker would read as 'date' again. Both go
   // on; unticking the one you do not own is the obvious next move.
-  if (next === 'auto' && !updated.auto_discover_alexa && !updated.auto_discover_google) {
+  if (next === 'auto' && !updated.auto_discover_alexa && !updated.auto_discover_google
+    && !updated.auto_discover_voice_satellite) {
     updated.auto_discover_alexa = true;
     updated.auto_discover_google = true;
   }

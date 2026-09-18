@@ -161,6 +161,20 @@ function countUpCycleSection(config: CardConfig, source: SourceType): FormSchema
 }
 
 /**
+ * Hiding an idle card is only meaningful for a date-driven one: those are the
+ * cards with a before and an after. A timer card is already empty-handed when
+ * no timer runs, and the list style shows its own empty state.
+ *
+ * The switch carries no label or helper of its own: the editor renders a
+ * heading beside it whose explanation lives on hover, which ha-form has no way
+ * to attach to a field.
+ */
+function hideWhenInactiveSection(source: SourceType): FormSchema[] {
+  if (!usesDateFields(source)) return [];
+  return [{ name: 'hide_when_inactive', selector: { boolean: {} } }];
+}
+
+/**
  * The only text fields left in the form: the subtitle prefix and suffix.
  *
  * Title, subtitle and expired text are rendered by the editor instead, so they
@@ -248,6 +262,7 @@ function discoverySection(caps: StyleCapabilities): FormSchema[] {
       schema: [
         { name: 'auto_discover_alexa', selector: { boolean: {} } },
         { name: 'auto_discover_google', selector: { boolean: {} } },
+        { name: 'auto_discover_voice_satellite', selector: { boolean: {} } },
       ],
     },
     { name: 'max_timers', selector: { number: { min: 1, max: 20, step: 1, mode: 'box' } } },
@@ -264,6 +279,7 @@ function discoverySection(caps: StyleCapabilities): FormSchema[] {
         templatable('alexa_color', { text: { placeholder: '#009bbd' } }),
         templatable('alexa_background', { text: { placeholder: '#dff3f7' } }),
         templatable('alexa_ring', { text: { placeholder: '#94809a' } }),
+        templatable('alexa_text', { text: {} }),
       ],
     },
     {
@@ -277,6 +293,21 @@ function discoverySection(caps: StyleCapabilities): FormSchema[] {
         templatable('google_color', { text: { placeholder: '#34a853' } }),
         templatable('google_background', { text: { placeholder: '#fef3c7' } }),
         templatable('google_ring', { text: { placeholder: '#b2d4bd' } }),
+        templatable('google_text', { text: {} }),
+      ],
+    },
+    {
+      type: 'expandable',
+      name: 'section_voice_rows',
+      flatten: true,
+      title: 'Voice Satellite Timer Styling',
+      icon: 'mdi:account-voice',
+      schema: [
+        { name: 'voice_icon', selector: { icon: {} } },
+        templatable('voice_color', { text: { placeholder: '#03a9f4' } }),
+        templatable('voice_background', { text: { placeholder: '#e1f5fe' } }),
+        templatable('voice_ring', { text: { placeholder: '#94809a' } }),
+        templatable('voice_text', { text: {} }),
       ],
     },
     // How those rows read their time. It lives here rather than in a section
@@ -449,6 +480,7 @@ function actionsSection(): FormSchema[] {
 export function computeSchema(config: CardConfig, source?: SourceType): FormSchema[] {
   return [
     ...computeSourceSchema(config, source),
+    ...computeHideWhenInactiveSchema(config, source),
     // The pinned list comes first: it is the part the user builds, while
     // discovery just switches on.
     ...computeCountdownsSchema(config),
@@ -473,6 +505,14 @@ export function computeSourceSchema(config: CardConfig, source?: SourceType): Fo
     ...sourceSection(activeSource, getStyle(config)),
     ...countUpCycleSection(config, activeSource),
   ];
+}
+
+/**
+ * The hide_when_inactive switch, which the editor renders beside a heading of
+ * its own rather than inside the source form.
+ */
+export function computeHideWhenInactiveSchema(config: CardConfig, source?: SourceType): FormSchema[] {
+  return hideWhenInactiveSection(source ?? getSourceType(config));
 }
 
 /** Auto-discovery settings, which the editor gives a section of its own. */

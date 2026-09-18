@@ -10,7 +10,7 @@
     "build:legacy": "node build.js",
     "build:watch": "rollup -c --watch",
     "build:dev": "rollup -c --environment NODE_ENV:development",
-    "test": "node test-suite/test-modular.cjs && node test-suite/test-integration.cjs && node test-suite/test-countdown-fixes.cjs && node test-suite/test-alexa-timer.cjs && node test-suite/test-scheduler.cjs && node test-suite/test-update-loop.cjs && node test-suite/test-listy.cjs && node test-suite/test-editor-schema.cjs",
+    "test": "node test-suite/test-modular.cjs && node test-suite/test-integration.cjs && node test-suite/test-countdown-fixes.cjs && node test-suite/test-alexa-timer.cjs && node test-suite/test-scheduler.cjs && node test-suite/test-update-loop.cjs && node test-suite/test-listy.cjs && node test-suite/test-hide-when-inactive.cjs && node test-suite/test-editor-schema.cjs",
     "test:structure": "node test-suite/test-modular.cjs",
     "test:integration": "node test-suite/test-integration.cjs",
     "test:visual": "echo 'Open test-suite/test-modular-build.html in browser for visual tests'",

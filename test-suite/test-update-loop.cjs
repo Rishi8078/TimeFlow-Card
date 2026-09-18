@@ -816,6 +816,21 @@ async function testListyStyleCarriesTimerEntityOver() {
     JSON.stringify(cfg));
 }
 
+// Discovered rows take their colours from the brand palette; text colour was the
+// one the styling section never offered.
+async function testBrandTextColourReachesTheRow() {
+  const mount = await mountCard({
+    type: 'custom:timeflow-card', style: 'listy', title: 'Timers',
+    auto_discover_alexa: true, alexa_text: '#ff0000',
+  }, { alexa: true });
+
+  const rows = mount.card._listRows;
+  check('Listy: alexa_text colours the discovered row',
+    rows.length > 0 && rows[0].textColor === '#ff0000',
+    `${rows.length} row(s), textColor ${rows[0] && rows[0].textColor}`);
+  mount.card.disconnectedCallback();
+}
+
 // ---------------------------------------------------------------- main
 (async () => {
   console.log('\nUpdate-loop harness\n' + '='.repeat(62));
@@ -834,6 +849,7 @@ async function testListyStyleCarriesTimerEntityOver() {
   await testStillListyCardDoesNotRepaint();
   await testYamlModeFollowsItsEntry();
   await testListyStyleCarriesTimerEntityOver();
+  await testBrandTextColourReachesTheRow();
   await testExpiryIsNotMissedByBackoff();
   await testLongCountdownDoesNotSpin();
   await testStoppedCardRestartsOnConfigChange();

@@ -139,7 +139,7 @@ export interface ListEntryConfig {
 }
 
 /** What the row kind decides: which icon, which tint, which ring colour. */
-export type ListRowKind = 'alexa' | 'google' | 'timer' | 'event';
+export type ListRowKind = 'alexa' | 'google' | 'voice' | 'timer' | 'event';
 
 /**
  * A single row of the 'listy' style, fully resolved. Building these in the
@@ -174,11 +174,13 @@ export interface CardConfig {
   creation_date?: string;        // Optional progress start date for count-down mode
   count_up_goal_date?: string;   // Optional goal/end date for count-up progress
   count_up_cycle?: string | number; // Optional repeating cycle length for count-up progress (e.g. "30d", "12:00:00", 86400)
+  hide_when_inactive?: boolean;  // Drop the card out of the view while there is nothing to count (before the start date, after the target or goal date)
 
   // Timer entity configuration (enhanced for Alexa and Google Home)
   timer_entity?: string;
   auto_discover_alexa?: boolean; // NEW: Automatically find and use Alexa timers
   auto_discover_google?: boolean; // NEW: Automatically find and use Google Home timers
+  auto_discover_voice_satellite?: boolean; // Timers held by Voice Satellite assist_satellite entities
 
   // Multi-timer list ('listy' style)
   max_timers?: number;            // Timer rows to draw before the list is truncated (default 5)
@@ -190,10 +192,17 @@ export interface CardConfig {
   alexa_color?: string;           // Alexa glyph colour
   alexa_background?: string;      // Alexa chip background
   alexa_ring?: string;            // Alexa progress ring; falls back to progress_color
+  alexa_text?: string;            // Alexa row title/subtitle colour
   google_icon?: string;           // Icon for Google Home rows (default mdi:google-home)
   google_color?: string;          // Google glyph colour
   google_background?: string;     // Google chip background
   google_ring?: string;           // Google progress ring; falls back to progress_color
+  google_text?: string;           // Google row title/subtitle colour
+  voice_icon?: string;            // Voice Satellite row icon
+  voice_color?: string;           // Voice Satellite glyph colour
+  voice_background?: string;      // Voice Satellite chip background
+  voice_ring?: string;            // Voice Satellite progress ring; falls back to progress_color
+  voice_text?: string;            // Voice Satellite row title/subtitle colour
   timer_icon?: string;            // Icon for standard timer.* rows (default mdi:timer-outline)
 
   // Display configuration

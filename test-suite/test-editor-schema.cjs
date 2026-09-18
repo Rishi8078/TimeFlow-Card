@@ -400,8 +400,9 @@ const dateCfg = (extra = {}) => ({ type: 'custom:timeflow-card', target_date: '2
 // ── The split around the title ──────────────────────────────────────────────
 
 {
-  const { computeSourceSchema, computeDiscoverySchema, computeCountdownsSchema,
-          computeTextSchema, computeExpiredSchema, computeUnitsSchema, computePanelsSchema } =
+  const { computeSourceSchema, computeHideWhenInactiveSchema, computeDiscoverySchema,
+          computeCountdownsSchema, computeTextSchema, computeExpiredSchema, computeUnitsSchema,
+          computePanelsSchema } =
     require(path.join(outDir, 'editor', 'schema.js'));
 
   for (const style of STYLES) {
@@ -413,7 +414,8 @@ const dateCfg = (extra = {}) => ({ type: 'custom:timeflow-card', target_date: '2
     ]) {
       const whole = JSON.stringify(computeSchema(cfg));
       const parts = JSON.stringify([
-        ...computeSourceSchema(cfg), ...computeCountdownsSchema(cfg), ...computeDiscoverySchema(cfg),
+        ...computeSourceSchema(cfg), ...computeHideWhenInactiveSchema(cfg),
+        ...computeCountdownsSchema(cfg), ...computeDiscoverySchema(cfg),
         ...computeTextSchema(cfg), ...computeExpiredSchema(cfg), ...computeUnitsSchema(cfg),
         ...computePanelsSchema(cfg),
       ]);
