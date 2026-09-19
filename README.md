@@ -2,14 +2,14 @@
 
 ![TimeFlow Card Preview](assets/thumbnail.png)
 
-A beautiful, highly customizable time card for Home Assistant. Use it as a countdown to an upcoming date, a count-up timer since a past event, or a live view of Home Assistant, Alexa, and Google Home timers. It includes multiple layouts, progress-circle options, a visual editor, and built-in Jinja2 template support.
+A beautiful, highly customizable time card for Home Assistant. Use it as a countdown to an upcoming date, a count-up timer since a past event, or a live view of Home Assistant, Alexa, Google Home and Voice Satellite timers. It includes multiple layouts, progress-circle options, a visual editor, and built-in Jinja2 template support.
 
 [![Home Assistant][ha_badge]][ha_link] [![HACS][hacs_badge]][hacs_link] [![GitHub Release][release_badge]][release] [![Buy Me A Coffee][bmac_badge]][bmac] ![downloads]
 
 
 ## Table of contents
 
-**[`Installation`](#installation)**  **[`Configuration`](#configuration)** **[`Examples`](#examples)** **[`Styling`](#styling)** **[`Templates`](#-template-support)** **[`Featured In`](#-featured-in)**
+**[`Installation`](#installation)**  **[`Configuration`](#configuration)** **[`Listy`](#the-listy-style)** **[`Examples`](#examples)** **[`Styling`](#styling)** **[`Templates`](#-template-support)** **[`Featured In`](#-featured-in)**
 <br>
 
 ## Installation
@@ -44,7 +44,7 @@ If `timer_entity` or smart-timer auto-discovery is used, timer data takes priori
 
 | Option | Type | Default | Description |
 | :-- | :-- | :-- | :-- |
-| `style` | string | `classic` | Card layout: `classic`, `eventy`, or `classic-compact`. |
+| `style` | string | `classic` | Card layout: `classic`, `eventy`, `classic-compact`, `gridy`, `minimal-square`, or `listy`. |
 | `mode` | string | `count_down` | Time mode: `count_down` or `count_up`. |
 | `target_date` | string | `null` | Main date field. In count-down mode this is the target date. In count-up mode this is the start date. Supports ISO strings, entity IDs, and templates. |
 | `creation_date` | string | `null` | Optional start date for count-down progress calculations. Supports ISO strings, entity IDs, and templates. |
@@ -56,9 +56,6 @@ If `timer_entity` or smart-timer auto-discovery is used, timer data takes priori
 | `auto_discover_voice_satellite` | boolean | `false` | Automatically discover timers held by Voice Satellite `assist_satellite` entities. |
 | `auto_discover_timers` | boolean | `false` | Automatically discover Home Assistant's own native `timer.*` entities. |
 | `timer_entities` | list | `[]` | Native timers to discover. Empty or unset discovers every `timer.*` entity. |
-| `show_count` | boolean | `true` | Row-count badge in the `listy` header. |
-| `expired_row_animation` | string | `none` | How a finished `listy` row asks to be noticed: `swing`, `pulse`, `shake`, `hop`. Respects reduced-motion. |
-| `alexa_pill` / `google_pill` / `voice_pill` / `timer_pill` | string | `null` | Row background for that source's `listy` rows. |
 | `hide_when_inactive` | boolean | `false` | Remove the card from the view while there is nothing to count: before the start date, and once the target or goal date has passed. |
 | `title` | string | auto | Card title. Falls back to an automatic title when omitted. Supports templates. |
 | `subtitle` | string | `null` | Optional subtitle override. Supports templates. |
@@ -92,6 +89,51 @@ If `timer_entity` or smart-timer auto-discovery is used, timer data takes priori
 | `double_tap_action` | object | `null` | Double-tap action for the card. |
 | `card_mod` | object | `null` | Advanced styling via [card-mod](https://github.com/thomasloven/lovelace-card-mod) integration. |
 
+
+### The `listy` style
+
+`style: listy` draws one row per timer instead of one card per timer: every Alexa,
+Google Home, Voice Satellite and Home Assistant timer that is currently running,
+plus any countdowns you pin by hand. Rows sort finished first, then running
+soonest-first, then paused.
+
+```yaml
+type: custom:timeflow-card
+style: listy
+title: Smart Timers
+auto_discover_alexa: true
+auto_discover_google: true
+auto_discover_voice_satellite: true
+auto_discover_timers: true
+timer_entities:          # optional: leave out to discover every timer.* entity
+  - timer.tea
+  - timer.laundry
+expired_row_animation: shake
+countdowns:
+  - title: Trip To Poland
+    target_date: '2026-11-01'
+    header_icon: mdi:bag-suitcase
+```
+
+| Option | Type | Default | Description |
+| :-- | :-- | :-- | :-- |
+| `max_timers` | number | `5` | Discovered rows to draw before the list is truncated (`1`-`20`). Pinned countdowns are never truncated. |
+| `countdowns` | list | `[]` | Countdowns pinned into the list. Each entry takes `target_date`, `creation_date`, `count_up_goal_date`, `count_up_cycle`, `mode`, `title`, `subtitle`, `expired_text`, `header_icon`, `header_icon_color`, `header_icon_background`, `background_color`, `text_color` and `progress_color`. |
+| `show_count` | boolean | `true` | Row-count badge in the header. |
+| `expired_row_animation` | string | `none` | What a finished row does to get noticed: `swing` or `pulse` (icon only), `shake` or `hop` (whole row). Honours the system's reduced-motion setting. |
+| `timer_entities` | list | `[]` | Native timers to discover. Empty or unset discovers every `timer.*` entity. |
+
+Each source styles its own rows. Replace `alexa` with `google`, `voice` or
+`timer` for the other three:
+
+| Option | Default | Description |
+| :-- | :-- | :-- |
+| `alexa_icon` | `mdi:amazon-alexa` | Row icon. |
+| `alexa_color` | brand tint | Icon colour. |
+| `alexa_background` | brand tint | Icon chip background. |
+| `alexa_ring` | `progress_color` | Progress ring colour. |
+| `alexa_text` | theme | Row title and subtitle colour. |
+| `alexa_pill` | transparent | Row background, the pill itself. |
 
 ## Examples
 ![TimeFlow Card Showcase](assets/Showcase.png)
