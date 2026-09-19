@@ -346,6 +346,9 @@ export class CountdownService {
       if (config.auto_discover_voice_satellite) {
         entityIds.push(...TimerEntityService.discoverVoiceSatelliteTimers(hass, watch));
       }
+      if (config.auto_discover_timers) {
+        entityIds.push(...TimerEntityService.discoverStandardTimers(hass, watch, config.timer_entities));
+      }
     }
 
     const timers: TimerData[] = [];
@@ -402,8 +405,7 @@ export class CountdownService {
     if (config.timer_entity) return null;
 
     // Skip if auto-discovery is not enabled
-    if (!config.auto_discover_alexa && !config.auto_discover_google
-      && !config.auto_discover_voice_satellite) return null;
+    if (!TimerEntityService.hasAutoDiscovery(config)) return null;
 
     const smartTimers: string[] = [];
 
@@ -421,6 +423,9 @@ export class CountdownService {
     }
     if (config.auto_discover_voice_satellite) {
       smartTimers.push(...TimerEntityService.discoverVoiceSatelliteTimers(hass, watch));
+    }
+    if (config.auto_discover_timers) {
+      smartTimers.push(...TimerEntityService.discoverStandardTimers(hass, watch, config.timer_entities));
     }
 
     if (smartTimers.length === 0) return null;
@@ -482,7 +487,7 @@ export class CountdownService {
         }
 
         // Check if auto-discovery was enabled but no timer found
-        if (config.auto_discover_alexa || config.auto_discover_google) {
+        if (TimerEntityService.hasAutoDiscovery(config)) {
           // Fallback: if we have cached data and it's finished, return finished state
           if (this.lastAlexaTimerData && TimerEntityService.isTimerExpired(this.lastAlexaTimerData)) {
             this.timeRemaining = this._timerDataToCountdownState(this.lastAlexaTimerData);
@@ -725,7 +730,7 @@ export class CountdownService {
       }
 
       // No timer found; check if auto-discovery was enabled
-      if (config.auto_discover_alexa || config.auto_discover_google) {
+      if (TimerEntityService.hasAutoDiscovery(config)) {
         // Fallback: if we have a cached timer that's finished, show its finished label
         if (this.lastAlexaTimerData && TimerEntityService.isTimerExpired(this.lastAlexaTimerData)) {
           return { value: '🔔', label: TimerEntityService.getTimerSubtitle(this.lastAlexaTimerData, false) };
@@ -735,7 +740,7 @@ export class CountdownService {
 
     if (mode !== 'count_up' && this.expired) {
       // For auto-discovered smart assistant timers, prefer timer-style expired text and cached label if available
-      if (config.auto_discover_alexa || config.auto_discover_google) {
+      if (TimerEntityService.hasAutoDiscovery(config)) {
         if (this.lastAlexaTimerData) {
           return { value: '🔔', label: TimerEntityService.getTimerSubtitle(this.lastAlexaTimerData, false) };
         }
@@ -788,7 +793,7 @@ export class CountdownService {
       }
 
       // Check if auto-discovery was enabled but no timer found
-      if (config.auto_discover_alexa || config.auto_discover_google) {
+      if (TimerEntityService.hasAutoDiscovery(config)) {
         // Fallback: if we have a cached timer that just finished, show its subtitle
         if (this.lastAlexaTimerData && TimerEntityService.isTimerExpired(this.lastAlexaTimerData)) {
           return TimerEntityService.getTimerSubtitle(this.lastAlexaTimerData, config.show_seconds !== false, localize, useCompact);
@@ -966,7 +971,7 @@ export class CountdownService {
     }
 
     // If auto-discovery is enabled, try to find the best smart assistant timer
-    if ((config.auto_discover_alexa || config.auto_discover_google) && hass) {
+    if (TimerEntityService.hasAutoDiscovery(config) && hass) {
       let smartTimers: string[] = [];
 
       // Discover Alexa timers if enabled
@@ -979,6 +984,14 @@ export class CountdownService {
       if (config.auto_discover_google) {
         const googleTimers = TimerEntityService.discoverGoogleTimers(hass);
         smartTimers.push(...googleTimers);
+      }
+
+      if (config.auto_discover_voice_satellite) {
+        smartTimers.push(...TimerEntityService.discoverVoiceSatelliteTimers(hass));
+      }
+
+      if (config.auto_discover_timers) {
+        smartTimers.push(...TimerEntityService.discoverStandardTimers(hass, undefined, config.timer_entities));
       }
 
       if (smartTimers.length > 0) {

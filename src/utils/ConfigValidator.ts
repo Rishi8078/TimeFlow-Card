@@ -4,6 +4,7 @@
  */
 
 import { parseDurationInputToMilliseconds } from './TimeUtils';
+import { TimerEntityService } from '../services/Timer';
 
 export interface ValidationError {
   field: string;
@@ -58,14 +59,14 @@ export class ConfigValidator {
           value: config.target_date
         });
       }
-    } else if (!config.timer_entity && !config.auto_discover_alexa && !config.auto_discover_google
+    } else if (!config.timer_entity && !TimerEntityService.hasAutoDiscovery(config)
       && !(config.style === 'listy' && Array.isArray(config.countdowns) && config.countdowns.length)) {
       // target_date is only required if no other source (timer_entity, discovery, listy pinned rows) is provided
       errors.push({
         field: 'target_date',
-        message: 'Either "target_date", "timer_entity", "auto_discover_alexa", or "auto_discover_google" must be provided',
+        message: 'Either "target_date", "timer_entity", or one of the auto-discovery options must be provided',
         severity: 'critical',
-        suggestion: 'Add target_date field with a valid date value like "2025-12-31T23:59:59" OR specify a timer_entity like "timer.my_timer" OR enable auto_discover_alexa OR enable auto_discover_google.',
+        suggestion: 'Add target_date field with a valid date value like "2025-12-31T23:59:59" OR specify a timer_entity like "timer.my_timer" OR enable one of auto_discover_alexa, auto_discover_google, auto_discover_voice_satellite or auto_discover_timers.',
         value: undefined
       });
     }
@@ -254,7 +255,7 @@ export class ConfigValidator {
       if (error.severity === 'critical' || error.severity === 'warning') {
         switch (error.field) {
           case 'target_date':
-            if (!safeConfig.target_date && !safeConfig.timer_entity && !safeConfig.auto_discover_alexa && !safeConfig.auto_discover_google) {
+            if (!safeConfig.target_date && !safeConfig.timer_entity && !TimerEntityService.hasAutoDiscovery(safeConfig)) {
               // Only set a default target_date if no timer_entity or auto-discovery is provided
               const tomorrow = new Date();
               tomorrow.setDate(tomorrow.getDate() + 1);

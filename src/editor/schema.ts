@@ -131,6 +131,8 @@ function sourceSection(source: SourceType, style: StyleName): FormSchema[] {
       schema: [
         { name: 'auto_discover_alexa', selector: { boolean: {} } },
         { name: 'auto_discover_google', selector: { boolean: {} } },
+        { name: 'auto_discover_voice_satellite', selector: { boolean: {} } },
+        { name: 'auto_discover_timers', selector: { boolean: {} } },
       ],
     }];
   }
@@ -249,10 +251,8 @@ function timeUnitsSection(caps: StyleCapabilities): FormSchema[] {
  * What the list finds on its own: the two integrations it can discover, how
  * many of their rows to draw, and the chip each one wears.
  *
- * timer_icon is deliberately absent. Discovery only finds Alexa and Google, so
- * the only rows that use it are pinned entries naming a timer.* entity - and
- * each of those can set its own header_icon, which overrides it anyway. The
- * key still works from YAML.
+ * Each source gets a panel of its own, collapsed: eight fields of styling that
+ * most cards never touch should not push the list settings off the screen.
  */
 function discoverySection(caps: StyleCapabilities): FormSchema[] {
   if (!caps.timerList) return [];
@@ -263,6 +263,7 @@ function discoverySection(caps: StyleCapabilities): FormSchema[] {
         { name: 'auto_discover_alexa', selector: { boolean: {} } },
         { name: 'auto_discover_google', selector: { boolean: {} } },
         { name: 'auto_discover_voice_satellite', selector: { boolean: {} } },
+        { name: 'auto_discover_timers', selector: { boolean: {} } },
       ],
     },
     { name: 'max_timers', selector: { number: { min: 1, max: 20, step: 1, mode: 'box' } } },
@@ -280,6 +281,7 @@ function discoverySection(caps: StyleCapabilities): FormSchema[] {
         templatable('alexa_background', { text: { placeholder: '#dff3f7' } }),
         templatable('alexa_ring', { text: { placeholder: '#94809a' } }),
         templatable('alexa_text', { text: {} }),
+        templatable('alexa_pill', { text: {} }),
       ],
     },
     {
@@ -294,6 +296,7 @@ function discoverySection(caps: StyleCapabilities): FormSchema[] {
         templatable('google_background', { text: { placeholder: '#fef3c7' } }),
         templatable('google_ring', { text: { placeholder: '#b2d4bd' } }),
         templatable('google_text', { text: {} }),
+        templatable('google_pill', { text: {} }),
       ],
     },
     {
@@ -308,6 +311,25 @@ function discoverySection(caps: StyleCapabilities): FormSchema[] {
         templatable('voice_background', { text: { placeholder: '#e1f5fe' } }),
         templatable('voice_ring', { text: { placeholder: '#94809a' } }),
         templatable('voice_text', { text: {} }),
+        templatable('voice_pill', { text: {} }),
+      ],
+    },
+    {
+      type: 'expandable',
+      name: 'section_timer_rows',
+      flatten: true,
+      title: 'Native Timer Styling',
+      icon: 'mdi:timer-outline',
+      schema: [
+        // Blank means every native timer on the system, which is what
+        // discovery does without it; naming a few narrows it to those.
+        { name: 'timer_entities', selector: { entity: { domain: 'timer', multiple: true } } },
+        { name: 'timer_icon', selector: { icon: {} } },
+        templatable('timer_color', { text: {} }),
+        templatable('timer_background', { text: {} }),
+        templatable('timer_ring', { text: {} }),
+        templatable('timer_text', { text: {} }),
+        templatable('timer_pill', { text: {} }),
       ],
     },
     // How those rows read their time. It lives here rather than in a section
@@ -319,7 +341,23 @@ function discoverySection(caps: StyleCapabilities): FormSchema[] {
       schema: [
         { name: 'show_seconds', selector: { boolean: {} } },
         { name: 'compact_format', selector: { boolean: {} } },
+        { name: 'show_count', selector: { boolean: {} } },
       ],
+    },
+    {
+      name: 'expired_row_animation',
+      selector: {
+        select: {
+          mode: 'dropdown',
+          options: [
+            { value: 'none', label: 'None' },
+            { value: 'swing', label: 'Swing the icon' },
+            { value: 'pulse', label: 'Pulse the icon' },
+            { value: 'shake', label: 'Shake the row' },
+            { value: 'hop', label: 'Hop the row' },
+          ],
+        },
+      },
     },
   ];
 }

@@ -1,4 +1,4 @@
-import { HomeAssistant } from '../types/index';
+import { CardConfig, HomeAssistant } from '../types/index';
 import { StandardTimerService } from './StandardTimer';
 import { AlexaTimerService } from './AlexaTimer';
 import { GoogleTimerService } from './GoogleTimer';
@@ -251,6 +251,61 @@ export class TimerEntityService {
     onCandidate?: (entityId: string) => void
   ): string[] {
     return VoiceSatelliteTimerService.discoverVoiceSatelliteTimers(hass, onCandidate);
+  }
+
+  /**
+   * AUTO-DISCOVERY: Home Assistant's own timer helpers, the `timer.*` domain.
+   *
+   * A helper is one of three states: idle, active or paused. Only the last two
+   * hold anything to show, but an idle helper is exactly the entity that
+   * changes when someone starts it, so it is watched rather than listed - the
+   * same contract the Voice Satellite discovery follows.
+   *
+   * `only` narrows discovery to the helpers a user picked. Left empty - which
+   * is what an untouched config carries - every timer.* helper is discovered.
+   *
+   * @param hass - Home Assistant object
+   * @param onCandidate - Called for every helper worth watching
+   * @param only - Helper entity ids to limit discovery to
+   * @returns string[] - Helper entity ids currently running or paused
+   */
+  static discoverStandardTimers(
+    hass: HomeAssistant,
+    onCandidate?: (entityId: string) => void,
+    only?: string[]
+  ): string[] {
+    if (!hass || !hass.states) return [];
+
+    const wanted = Array.isArray(only) && only.length > 0 ? new Set(only) : null;
+    const found: string[] = [];
+
+    for (const entityId in hass.states) {
+      if (!entityId.startsWith('timer.')) continue;
+      if (wanted && !wanted.has(entityId)) continue;
+
+      onCandidate?.(entityId);
+
+      const state = hass.states[entityId]?.state;
+      if (state === 'active' || state === 'paused') {
+        found.push(entityId);
+      }
+    }
+
+    return found;
+  }
+
+  /**
+   * Is this card sourcing its timers from discovery at all?
+   *
+   * One answer for every caller: the predicate used to be written out at each
+   * site as `auto_discover_alexa || auto_discover_google`, which silently left
+   * Voice Satellite cards out of the fallbacks that used it.
+   */
+  static hasAutoDiscovery(config: CardConfig): boolean {
+    return !!(config.auto_discover_alexa
+      || config.auto_discover_google
+      || config.auto_discover_voice_satellite
+      || config.auto_discover_timers);
   }
 
   /**

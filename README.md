@@ -54,6 +54,11 @@ If `timer_entity` or smart-timer auto-discovery is used, timer data takes priori
 | `auto_discover_alexa` | boolean | `false` | Automatically discover Alexa timer entities from the Alexa Media Player integration. |
 | `auto_discover_google` | boolean | `false` | Automatically discover Google Home timer entities from the HA Google Home integration. |
 | `auto_discover_voice_satellite` | boolean | `false` | Automatically discover timers held by Voice Satellite `assist_satellite` entities. |
+| `auto_discover_timers` | boolean | `false` | Automatically discover Home Assistant's own native `timer.*` entities. |
+| `timer_entities` | list | `[]` | Native timers to discover. Empty or unset discovers every `timer.*` entity. |
+| `show_count` | boolean | `true` | Row-count badge in the `listy` header. |
+| `expired_row_animation` | string | `none` | How a finished `listy` row asks to be noticed: `swing`, `pulse`, `shake`, `hop`. Respects reduced-motion. |
+| `alexa_pill` / `google_pill` / `voice_pill` / `timer_pill` | string | `null` | Row background for that source's `listy` rows. |
 | `hide_when_inactive` | boolean | `false` | Remove the card from the view while there is nothing to count: before the start date, and once the target or goal date has passed. |
 | `title` | string | auto | Card title. Falls back to an automatic title when omitted. Supports templates. |
 | `subtitle` | string | `null` | Optional subtitle override. Supports templates. |

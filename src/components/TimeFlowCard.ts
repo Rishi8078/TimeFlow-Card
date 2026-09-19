@@ -1,5 +1,5 @@
 //TimeFlowCard.ts
-import { LitElement, html, css, TemplateResult, CSSResult } from 'lit';
+import { LitElement, html, css, TemplateResult, CSSResult, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { TimerEntityService, TimerData } from '../services/Timer';
@@ -691,7 +691,9 @@ export class TimeFlowCard extends LitElement {
         font-size: 0.75rem;
         font-weight: 700;
         font-variant-numeric: tabular-nums;
-        color: color-mix(in srgb, currentColor 65%, transparent);
+        /* 12px bold is not 'large text' for WCAG, so the badge needs the full
+           4.5:1 - at 65% it sat near 3.5:1 on HA's light theme. */
+        color: color-mix(in srgb, currentColor 80%, transparent);
         background: color-mix(in srgb, var(--timeflow-listy-card-base), currentColor 6%);
         border: 1px solid var(--timeflow-listy-row-border);
       }
@@ -707,7 +709,11 @@ export class TimeFlowCard extends LitElement {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 9px 18px 9px 11px;
+        /* The chip sits 12px off every near edge, the same breathing room
+           classic-compact gives its icon. At the old 11px/9px the 44px chip was
+           flush with the row's padding box, which is what put its corner inside
+           the row's own corner arc. */
+        padding: 12px 18px 12px 12px;
         box-sizing: border-box;
         width: 100%;
         /* The same token ha-card uses, so rows are shaped by the user's theme
@@ -745,15 +751,19 @@ export class TimeFlowCard extends LitElement {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 44px;
-        height: 44px;
-        border-radius: 13px;
+        width: var(--listy-icon-size, 40px);
+        height: var(--listy-icon-size, 40px);
+        /* The theme's own card radius, the same token classic-compact's icon
+           and the row itself use. */
+        border-radius: var(--ha-card-border-radius, 12px);
         flex-shrink: 0;
         background: var(--timeflow-listy-chip-bg);
       }
 
       .listy-row-chip ha-icon {
-        --mdc-icon-size: 24px;
+        /* Proportional to the chip, so resizing one resizes the other -
+           classic-compact sizes its glyph the same way. */
+        --mdc-icon-size: calc(var(--listy-icon-size, 40px) * 0.55);
         color: var(--secondary-text-color);
       }
 
@@ -826,9 +836,77 @@ export class TimeFlowCard extends LitElement {
         opacity: 0.45;
       }
 
+      /* ── Listy: what a finished row does to get noticed ────────────
+         Two of the four move only the icon, two move the whole pill. A
+         finished timer is the one row asking for something, so the motion is
+         short and repeats rather than playing once and going quiet. */
+      @keyframes listy-swing {
+        0%, 100% { transform: rotate(0deg); }
+        20% { transform: rotate(-13deg); }
+        40% { transform: rotate(11deg); }
+        60% { transform: rotate(-6deg); }
+        80% { transform: rotate(4deg); }
+      }
+
+      @keyframes listy-pulse {
+        0%, 100% { transform: scale(1); }
+        14% { transform: scale(1.18); }
+        28% { transform: scale(1); }
+        42% { transform: scale(1.12); }
+        70% { transform: scale(1); }
+      }
+
+      @keyframes listy-shake {
+        0%, 100% { transform: translateX(0); }
+        10% { transform: translateX(-2.5px); }
+        20% { transform: translateX(2.5px); }
+        30% { transform: translateX(-2px); }
+        40% { transform: translateX(2px); }
+        50% { transform: translateX(-1px); }
+        60% { transform: translateX(1px); }
+        70% { transform: translateX(0); }
+      }
+
+      @keyframes listy-hop {
+        0%, 100% { transform: translateY(0); }
+        35% { transform: translateY(-3.5px); }
+        50% { transform: translateY(0); }
+        65% { transform: translateY(-1.5px); }
+        80% { transform: translateY(0); }
+      }
+
+      .listy-row.anim-swing .listy-row-chip ha-icon {
+        display: inline-block;
+        transform-origin: 50% 10%;
+        animation: listy-swing 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      }
+
+      .listy-row.anim-pulse .listy-row-chip ha-icon {
+        display: inline-block;
+        transform-origin: center center;
+        animation: listy-pulse 1.5s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+      }
+
+      .listy-row.anim-shake {
+        animation: listy-shake 1.8s ease-in-out infinite;
+      }
+
+      .listy-row.anim-hop {
+        animation: listy-hop 1.9s cubic-bezier(0.28, 0.84, 0.42, 1) infinite;
+      }
+
       @media (prefers-reduced-motion: reduce) {
         .listy-ring-value {
           transition: none;
+        }
+
+        /* A row that will not move still has to read as finished: the ring is
+           already full and the subtitle already says so. */
+        .listy-row.anim-swing .listy-row-chip ha-icon,
+        .listy-row.anim-pulse .listy-row-chip ha-icon,
+        .listy-row.anim-shake,
+        .listy-row.anim-hop {
+          animation: none;
         }
       }
 
@@ -1218,14 +1296,22 @@ export class TimeFlowCard extends LitElement {
       'alexa_background',
       'alexa_ring',
       'alexa_text',
+      'alexa_pill',
       'google_color',
       'google_background',
       'google_ring',
       'google_text',
+      'google_pill',
       'voice_color',
       'voice_background',
       'voice_ring',
-      'voice_text'
+      'voice_text',
+      'voice_pill',
+      'timer_color',
+      'timer_background',
+      'timer_ring',
+      'timer_text',
+      'timer_pill'
     ] as const;
 
     // Resolve templates AND entity IDs where applicable.
@@ -1428,6 +1514,7 @@ export class TimeFlowCard extends LitElement {
         iconBackground: palette.iconBackground,
         ringColor: palette.ringColor,
         textColor: palette.textColor,
+        background: palette.background,
       };
     });
   }
@@ -1594,7 +1681,7 @@ export class TimeFlowCard extends LitElement {
         icon,
         iconColor,
         iconBackground,
-        background: entryConfig.background_color,
+        background: entryConfig.background_color || base.background,
         textColor: entryConfig.text_color || base.textColor,
         ringColor,
       });
@@ -1617,7 +1704,7 @@ export class TimeFlowCard extends LitElement {
     kind: ListRowKind,
     config: CardConfig,
     entry?: ListEntryConfig
-  ): { icon: string; iconColor: string; iconBackground: string; ringColor: string; textColor?: string } {
+  ): { icon: string; iconColor: string; iconBackground: string; ringColor: string; textColor?: string; background?: string } {
     const accent = config.progress_color;
 
     // The brand tints are defaults, not fixtures. Colour and background move
@@ -1630,6 +1717,7 @@ export class TimeFlowCard extends LitElement {
         iconBackground: config.alexa_background || '#dff3f7',
         ringColor: config.alexa_ring || accent || '#94809a',
         textColor: config.alexa_text,
+        background: config.alexa_pill,
       };
     }
 
@@ -1640,6 +1728,7 @@ export class TimeFlowCard extends LitElement {
         iconBackground: config.google_background || '#fef3c7',
         ringColor: config.google_ring || accent || '#b2d4bd',
         textColor: config.google_text,
+        background: config.google_pill,
       };
     }
 
@@ -1650,6 +1739,7 @@ export class TimeFlowCard extends LitElement {
         iconBackground: config.voice_background || '#e1f5fe',
         ringColor: config.voice_ring || accent || '#94809a',
         textColor: config.voice_text,
+        background: config.voice_pill,
       };
     }
 
@@ -1662,11 +1752,15 @@ export class TimeFlowCard extends LitElement {
       };
     }
 
+    // Home Assistant's own timer helpers. Unlike Alexa and Google these carry
+    // no brand, so the defaults are theme tokens rather than fixed tints.
     return {
       icon: config.timer_icon || 'mdi:timer-outline',
-      iconColor: 'var(--secondary-text-color, #475569)',
-      iconBackground: 'var(--timeflow-listy-chip-bg)',
-      ringColor: accent || 'var(--primary-color, #94809a)',
+      iconColor: config.timer_color || 'var(--secondary-text-color, #475569)',
+      iconBackground: config.timer_background || 'var(--timeflow-listy-chip-bg)',
+      ringColor: config.timer_ring || accent || 'var(--primary-color, #94809a)',
+      textColor: config.timer_text,
+      background: config.timer_pill,
     };
   }
 
@@ -1762,7 +1856,12 @@ export class TimeFlowCard extends LitElement {
         <div class="card-content-listy">
           <div class="listy-header">
             <span class="listy-title">${this._getTitleText()}</span>
-            <span class="listy-count ${rows.length === 0 ? 'is-empty' : ''}">${rows.length}</span>
+            ${this._resolvedConfig.show_count === false ? nothing : html`
+              <span
+                class="listy-count ${rows.length === 0 ? 'is-empty' : ''}"
+                aria-label="${rows.length} ${rows.length === 1 ? 'row' : 'rows'}"
+              >${rows.length}</span>
+            `}
           </div>
 
           ${rows.length === 0
@@ -1782,6 +1881,18 @@ export class TimeFlowCard extends LitElement {
    * middle of the list does not make every row below it jump to a new element
    * and replay its transitions.
    */
+  /**
+   * The animation class a finished row wears, or nothing.
+   *
+   * Only finished rows animate: a running row already moves - its ring fills
+   * every second - and a paused one is deliberately still.
+   */
+  private _expiredRowAnimation(row: ListRow): string {
+    const choice = this._resolvedConfig.expired_row_animation;
+    if (row.state !== 'finished' || !choice || choice === 'none') return '';
+    return `anim-${choice}`;
+  }
+
   private _renderListyRow(row: ListRow): TemplateResult {
     const rowStyles = [
       ...(row.background ? [`background: ${row.background}`] : []),
@@ -1789,7 +1900,10 @@ export class TimeFlowCard extends LitElement {
     ].join('; ');
 
     return html`
-      <div class="listy-row ${row.state} ${row.textColor ? 'has-text-color' : ''}" style="${rowStyles}">
+      <div
+        class="listy-row ${row.state} ${this._expiredRowAnimation(row)} ${row.textColor ? 'has-text-color' : ''}"
+        style="${rowStyles}"
+      >
         <div
           class="listy-row-chip"
           style="${row.iconBackground ? `background: ${row.iconBackground}` : ''}"
@@ -1925,7 +2039,8 @@ export class TimeFlowCard extends LitElement {
     ].join('; ');
 
     // Determine if this is a timer display (timer_entity or auto_discover_*)
-    const isTimerDisplay = this._resolvedConfig.timer_entity || this._resolvedConfig.auto_discover_alexa || this._resolvedConfig.auto_discover_google;
+    const isTimerDisplay = !!this._resolvedConfig.timer_entity
+      || TimerEntityService.hasAutoDiscovery(this._resolvedConfig);
     // For timers, always use compact format by default (show: 5h30m25s); for countdowns, use the calculated useCompact
     const timeFormatCompact = isTimerDisplay ? (compact_format !== false) : useCompact;
 
@@ -2587,7 +2702,7 @@ export class TimeFlowCard extends LitElement {
     }
     
     // Fallback: for auto-discovery or expired state
-    if (this._resolvedConfig.auto_discover_alexa || this._resolvedConfig.auto_discover_google) {
+    if (TimerEntityService.hasAutoDiscovery(this._resolvedConfig)) {
       return 'Countdown Timer';
     }
     

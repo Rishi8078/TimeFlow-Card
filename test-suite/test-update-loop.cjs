@@ -829,6 +829,27 @@ async function testBrandTextColourReachesTheRow() {
     rows.length > 0 && rows[0].textColor === '#ff0000',
     `${rows.length} row(s), textColor ${rows[0] && rows[0].textColor}`);
   mount.card.disconnectedCallback();
+
+  // alexa_pill paints the row behind that text. Unset it stays undefined, so
+  // the card background shows through exactly as it did before the option.
+  const painted = await mountCard({
+    type: 'custom:timeflow-card', style: 'listy', title: 'Timers',
+    auto_discover_alexa: true, alexa_pill: '#101820',
+  }, { alexa: true });
+  const paintedRows = painted.card._listRows;
+  check('Listy: alexa_pill fills the discovered row',
+    paintedRows.length > 0 && paintedRows[0].background === '#101820',
+    `background ${paintedRows[0] && paintedRows[0].background}`);
+  painted.card.disconnectedCallback();
+
+  const bare = await mountCard({
+    type: 'custom:timeflow-card', style: 'listy', title: 'Timers',
+    auto_discover_alexa: true,
+  }, { alexa: true });
+  check('Listy: no pill colour leaves the row transparent',
+    bare.card._listRows[0] && bare.card._listRows[0].background === undefined,
+    `background ${bare.card._listRows[0] && bare.card._listRows[0].background}`);
+  bare.card.disconnectedCallback();
 }
 
 // ---------------------------------------------------------------- main
