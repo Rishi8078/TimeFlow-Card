@@ -5,6 +5,29 @@ All notable changes to TimeFlow Card will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0/).
 
+## [4.0.0] - 2026-09-19
+
+One card can now show every running timer, and the visual editor was rebuilt around what each style can actually draw.
+
+### Added
+
+- **`listy` style**: one row per timer instead of one card per timer, sorted finished first, then running soonest-first, then paused ([#13](https://github.com/Rishi8078/TimeFlow-Card/issues/13))
+- **Voice Satellite discovery** (`auto_discover_voice_satellite`): timers held by `assist_satellite` entities from the Voice Satellite integration
+- **Native timer discovery** (`auto_discover_timers`): Home Assistant's own `timer.*` entities, narrowed by `timer_entities` when set and discovering all of them when not
+- **`hide_when_inactive`**: removes a date-driven card from the view before its start date and once its target or goal date has passed, and brings it back on its own. Edit mode always draws it ([#56](https://github.com/Rishi8078/TimeFlow-Card/issues/56))
+- **`countdowns`**: countdowns pinned into a `listy` card alongside whatever discovery finds, each with its own dates, icon and colours
+- **Per-source row styling**: `alexa_*`, `google_*`, `voice_*` and `timer_*` variants of `icon`, `color`, `background`, `ring`, `text` and `pill`
+- **`expired_row_animation`**: a finished row can `swing` or `pulse` its icon, or `shake` or `hop` the whole row. Honours `prefers-reduced-motion`
+- **`show_count`** and **`max_timers`**: the header's row-count badge, and how many discovered rows to draw
+- **Rebuilt visual editor**: a source picker that switches the whole form, per-style field sets, template toggles on every date and text field, a row editor for pinned countdowns, and collapsible per-source styling panels
+
+### Fixed
+
+- **Paused Voice Satellite timers** no longer count past zero into negative time. Requires Voice Satellite 2026.9.8, which added the `is_active` flag the card reads
+- **Voice Satellite cards** were rejected by the validator as missing `target_date`, and were left out of the finished-timer, expired-display, default-title and tap-action fallbacks. Auto-discovery is now one predicate rather than eight hand-written copies of it
+- The `listy` count badge gained an accessible name and enough contrast to pass WCAG AA
+- `listy` row icons picked up the inset, theme-aware corner radius and proportional glyph that the compact style already had
+
 ## [3.5.1] - 2026-09-01
 
 A maintenance release. No new options, but the card does far less work than it used to.
