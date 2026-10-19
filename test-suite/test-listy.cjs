@@ -106,6 +106,19 @@ function hassWith(states) {
   const single = parseCountdownTemplate('[{"title":"Birthday","target_date":"2099-06-12"}]');
   check('Dynamic entries: parses one date countdown', single.length === 1 && single[0].title === 'Birthday');
 
+  // Home Assistant's render_template subscription delivers JSON output as a native array.
+  const native = parseCountdownTemplate([
+    { title: 'Native', target_date: '2099-06-12', header_icon: 'mdi:cake-variant' },
+    { title: 'No source' },
+    'text',
+  ]);
+  check('Dynamic entries: accepts a native array and filters invalid members',
+    native.length === 1 && native[0].title === 'Native' && native[0].header_icon === 'mdi:cake-variant');
+  check('Dynamic entries: a native non-array result is ignored',
+    parseCountdownTemplate({ title: 'x', target_date: '2099-06-12' }).length === 0
+      && parseCountdownTemplate(42).length === 0
+      && parseCountdownTemplate(null).length === 0);
+
   const multiple = parseCountdownTemplate(
     '[{"title":"First","target_date":"2099-06-12"},{"title":"Second","timer_entity":"timer.second"}]'
   );

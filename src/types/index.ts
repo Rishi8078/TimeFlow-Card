@@ -23,7 +23,8 @@ export interface HomeAssistant {
 
 // WebSocket template rendering types (matches Home Assistant's API)
 export interface RenderTemplateResult {
-  result: string;
+  // Home Assistant parses JSON-looking output, so this is not always a string.
+  result: any;
   listeners: TemplateListeners;
 }
 

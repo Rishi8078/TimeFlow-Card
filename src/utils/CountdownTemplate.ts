@@ -75,17 +75,25 @@ function parseEntry(value: unknown): ListEntryConfig | undefined {
   return entry as ListEntryConfig;
 }
 
-/** Parse and filter the JSON text returned by Home Assistant's template renderer. */
+/**
+ * Parse and filter a rendered countdowns template. Home Assistant's render_template
+ * subscription already literal-parses JSON-looking output into a native array, so
+ * both that and the raw JSON text are accepted.
+ */
 export function parseCountdownTemplate(output: unknown): ListEntryConfig[] {
-  if (typeof output !== 'string' || output.trim().length === 0) return [];
+  let parsed: unknown = output;
 
-  try {
-    const parsed: unknown = JSON.parse(output);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map(parseEntry).filter((entry): entry is ListEntryConfig => entry !== undefined);
-  } catch {
-    return [];
+  if (typeof output === 'string') {
+    if (output.trim().length === 0) return [];
+    try {
+      parsed = JSON.parse(output);
+    } catch {
+      return [];
+    }
   }
+
+  if (!Array.isArray(parsed)) return [];
+  return parsed.map(parseEntry).filter((entry): entry is ListEntryConfig => entry !== undefined);
 }
 
 /** Return a new list with manual entries first and generated entries appended. */

@@ -819,6 +819,13 @@ async function testDynamicCountdownTemplateUpdates() {
   await flush();
   check('Dynamic countdowns: a new template result updates the list',
     card._listRows.map((row) => row.title).join(',') === 'Manual,Updated Birthday');
+
+  // Home Assistant parses JSON-looking template output into a native array.
+  hass.pushTemplate(template, [{ title: 'Native Birthday', target_date: '2026-09-05T00:00:00' }], listeners);
+  await flush();
+  await flush();
+  check('Dynamic countdowns: a native array template result is rendered',
+    card._listRows.map((row) => row.title).join(',') === 'Manual,Native Birthday');
   card.disconnectedCallback();
 }
 
