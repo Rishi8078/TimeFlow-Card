@@ -62,7 +62,9 @@ function parseEntry(value: unknown): ListEntryConfig | undefined {
     return undefined;
   }
   const hasDate = typeof candidate.target_date === 'string'
-    && ConfigValidator.isValidDateInput(candidate.target_date);
+    && (ConfigValidator.isTemplate(candidate.target_date)
+      || ConfigValidator.isValidEntityId(candidate.target_date)
+      || !Number.isNaN(new Date(candidate.target_date).getTime()));
   if (!hasTimer && !hasDate) return undefined;
 
   const entry: Record<string, unknown> = {};
