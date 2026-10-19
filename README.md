@@ -119,7 +119,7 @@ countdowns:
 | :-- | :-- | :-- | :-- |
 | `max_timers` | number | `5` | Discovered rows to draw before the list is truncated (`1`-`20`). Pinned countdowns are never truncated. |
 | `countdowns` | list | `[]` | Countdowns pinned into the list. Each entry takes `target_date`, `creation_date`, `count_up_goal_date`, `count_up_cycle`, `mode`, `title`, `subtitle`, `expired_text`, `header_icon`, `header_icon_color`, `header_icon_background`, `background_color`, `text_color` and `progress_color`. |
-| `countdowns_template` | string | `null` | Home Assistant Jinja template returning a JSON array of countdown entries. Valid generated entries are appended after `countdowns`. |
+IN | `countdowns_template` | string | `null` | Home Assistant Jinja template returning a JSON array of countdown entries. Valid generated entries are appended after `countdowns`. |
 | `show_count` | boolean | `true` | Row-count badge in the header. |
 | `expired_row_animation` | string | `none` | What a finished row does to get noticed: `swing` or `pulse` (icon only), `shake` or `hop` (whole row). Honours the system's reduced-motion setting. |
 | `timer_entities` | list | `[]` | Native timers to discover. Empty or unset discovers every `timer.*` entity. |
