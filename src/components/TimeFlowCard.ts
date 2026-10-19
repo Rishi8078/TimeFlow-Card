@@ -1585,6 +1585,28 @@ export class TimeFlowCard extends LitElement {
     return resolved;
   }
 
+  private _withAllDayEventWindow(entry: CardConfig): CardConfig {
+    const targetDate = entry.target_date;
+    if (typeof targetDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) return entry;
+
+    const startTimestamp = DateParser.parseISODate(targetDate);
+    if (!Number.isFinite(startTimestamp)) return entry;
+
+    const endDate = new Date(startTimestamp);
+    endDate.setDate(endDate.getDate() + 1);
+    const endDateString = [
+      endDate.getFullYear(),
+      String(endDate.getMonth() + 1).padStart(2, '0'),
+      String(endDate.getDate()).padStart(2, '0'),
+    ].join('-');
+
+    return {
+      ...entry,
+      creation_date: entry.creation_date || targetDate,
+      target_date: endDateString,
+    };
+  }
+
   /**
    * The label-free half of a timer row's subtitle, for rows whose title already
    * carries the name. The device is appended only when the list spans more than
@@ -1636,7 +1658,7 @@ export class TimeFlowCard extends LitElement {
       const entry = entries[index];
       if (!entry || typeof entry !== 'object') continue;
 
-      const entryConfig = await this._resolveEntryTemplates(entry);
+      const entryConfig = this._withAllDayEventWindow(await this._resolveEntryTemplates(entry));
       const service = this._entryCountdown;
       service.beginPass();
 

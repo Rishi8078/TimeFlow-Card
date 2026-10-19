@@ -763,6 +763,51 @@ async function testPinnedRowsSetTheWakeDeadline() {
     many.card.getCardSize() === 4, `size ${many.card.getCardSize()}`);
 }
 
+async function testEventRowsStayActiveUntilTheirEnd() {
+  const originalTimezone = process.env.TZ;
+  process.env.TZ = 'Europe/Madrid';
+  try {
+    const listy = { type: 'custom:timeflow-card', style: 'listy', title: 'Events' };
+    const timed = await mountCard({
+      ...listy,
+      countdowns: [{
+        title: 'Timed event',
+        target_date: '2026-08-31T13:00:00Z',
+        creation_date: '2026-08-31T12:00:00Z',
+        expired_text: 'Event ended',
+      }],
+    });
+    check('Events: a started event counts down to its finish timestamp',
+      timed.card._listRows[0].state === 'running');
+    await timed.clock.advance(61 * 60 * 1000);
+    check('Events: an event enters its finished state at the finish timestamp',
+      timed.card._listRows[0].state === 'finished' && timed.card._listRows[0].subtitle === 'Event ended');
+    timed.card.disconnectedCallback();
+
+    const template = "{{ states('sensor.all_day_event') }}";
+    const allDay = await mountCard({
+      ...listy,
+      countdowns_template: template,
+    });
+    allDay.hass.pushTemplate(template, [{
+      title: 'All-day event',
+      target_date: '2026-08-31',
+      expired_text: 'Event ended',
+    }], { all: false, domains: [], entities: ['sensor.all_day_event'], time: false });
+    await flush();
+    await flush();
+    check('Events: date-only event remains running through its local calendar day',
+      allDay.card._listRows[0].state === 'running');
+    await allDay.clock.advance(10 * 60 * 60 * 1000 + 1000);
+    check('Events: date-only event finishes after local midnight',
+      allDay.card._listRows[0].state === 'finished' && allDay.card._listRows[0].subtitle === 'Event ended');
+    allDay.card.disconnectedCallback();
+  } finally {
+    if (originalTimezone === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTimezone;
+  }
+}
+
 // A listy card whose rows hold still must not repaint: the rows array is rebuilt
 // every pass, and it used to be reactive state, so each rebuild repainted.
 async function testStillListyCardDoesNotRepaint() {
@@ -1019,6 +1064,7 @@ async function testBrandTextColourReachesTheRow() {
   await testCountUpKeepsTicking();
   await testPassesDoNotOverlap();
   await testPinnedRowsSetTheWakeDeadline();
+  await testEventRowsStayActiveUntilTheirEnd();
 
   console.log('\nBaseline (60s of virtual time, one card)\n' + '-'.repeat(62));
   await baseline('days-only target_date', { ...DAYS_ONLY_CONFIG }, { entities: 1500 });

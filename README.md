@@ -130,10 +130,13 @@ IN | `countdowns_template` | string | `null` | Home Assistant Jinja template ret
 existing WebSocket subscription, not by the card. Return a JSON array whose
 entries use the same fields as `countdowns`; each entry needs a valid
 `target_date` or `timer_entity`. `target_date` accepts the same ISO date/time,
-entity, and template values as a manually configured entry. Date-only strings
-and timezone-naive datetimes are interpreted in the browser's local timezone;
-date-only strings mean midnight on that local calendar date. Timestamps with an
-explicit timezone suffix keep their specified timezone.
+entity, and template values as a manually configured entry. Timezone-naive
+datetimes are interpreted in the browser's local timezone; timestamps with an
+explicit timezone suffix keep their specified timezone. In a `listy` entry, a
+date-only `target_date` represents an all-day event: it runs from local midnight
+on that date until local midnight the following day. If `creation_date` is not
+provided, progress starts at the beginning of that day. For timed events, use
+`creation_date` for the start and `target_date` for the finish.
 Supported entry fields include `mode`, `title`, `subtitle`, `creation_date`,
 `count_up_goal_date`, `count_up_cycle`, `expired_text`, `header_icon`,
 `header_icon_color`, `header_icon_background`, `background_color`, `text_color`,
