@@ -55,6 +55,9 @@ export class TemplateService {
   // Map of template string -> current result
   private _templateResults: Map<string, RenderTemplateResult> = new Map();
 
+  // Templates used by the current card update pass.
+  private _activeTemplates: Set<string> = new Set();
+
   // Reference to the card component
   public card?: TimeFlowCard;
 
@@ -88,6 +91,19 @@ export class TemplateService {
   async disconnect(): Promise<void> {
     this._connected = false;
     await this._unsubscribeAll();
+  }
+
+  beginPass(): void {
+    this._activeTemplates.clear();
+  }
+
+  async reconcileTemplates(): Promise<void> {
+    const unusedTemplates = new Set([
+      ...this._unsubRenderTemplates.keys(),
+      ...this._templateResults.keys(),
+    ]);
+    this._activeTemplates.forEach((template) => unusedTemplates.delete(template));
+    await Promise.all(Array.from(unusedTemplates, (template) => this.unsubscribeFromTemplate(template)));
   }
 
   /**
@@ -189,17 +205,18 @@ export class TemplateService {
    */
   async unsubscribeFromTemplate(template: string): Promise<void> {
     const unsubPromise = this._unsubRenderTemplates.get(template);
-    if (!unsubPromise) return;
-
     try {
-      const unsub = await unsubPromise;
-      unsub();
-      this._unsubRenderTemplates.delete(template);
-      this._templateResults.delete(template);
+      if (unsubPromise) {
+        const unsub = await unsubPromise;
+        unsub();
+      }
     } catch (err: any) {
       if (err.code !== 'not_found' && err.code !== 'template_error') {
         console.warn('[TimeFlow] Error unsubscribing from template:', err);
       }
+    } finally {
+      this._templateResults.delete(template);
+      this._unsubRenderTemplates.delete(template);
     }
   }
 
@@ -215,6 +232,8 @@ export class TemplateService {
     if (!template) {
       return template;
     }
+
+    this._activeTemplates.add(template);
 
     // Ensure we're subscribed to this template
     if (this._connected && this.card?.hass?.connection) {

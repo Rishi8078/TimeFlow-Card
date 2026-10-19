@@ -1274,6 +1274,8 @@ export class TimeFlowCard extends LitElement {
     // If we have critical configuration errors, skip updates
     if (this._validationResult?.hasCriticalErrors) return;
 
+    this.templateService.beginPass();
+
     // Clone config for resolution
     const config = this.config;
     const resolvedConfig = { ...config };
@@ -1406,6 +1408,9 @@ export class TimeFlowCard extends LitElement {
       this._listRows = [];
       this._listTimers = [];
     }
+
+    if (this.config !== config) return;
+    await this.templateService.reconcileTemplates();
 
     const signature = this._computeDisplaySignature();
     const displayChanged = signature !== this._displaySignature;

@@ -93,19 +93,20 @@ function createHass({ entities = 0, alexa = false, alexaActive = true } = {}) {
     user: { name: 'Test' },
     connection: {
       subscribeMessage(onMessage, params) {
-        subscriptions.push({ onMessage, params });
-        return Promise.resolve(() => {});
+        const subscription = { onMessage, params, active: true };
+        subscriptions.push(subscription);
+        return Promise.resolve(() => { subscription.active = false; });
       },
     },
     /** Simulate HA pushing a rendered template result. */
     pushTemplate(template, result, listeners = { all: false, domains: [], entities: [], time: false }) {
-      const sub = subscriptions.find((s) => s.params && s.params.template === template);
+      const sub = subscriptions.find((s) => s.active && s.params && s.params.template === template);
       if (!sub) return false;
       sub.onMessage({ result, listeners });
       return true;
     },
-    subscriptionCount: () => subscriptions.length,
-    subscribedTemplates: () => subscriptions.map((s) => s.params && s.params.template),
+    subscriptionCount: () => subscriptions.filter((s) => s.active).length,
+    subscribedTemplates: () => subscriptions.filter((s) => s.active).map((s) => s.params && s.params.template),
   };
 }
 
@@ -829,6 +830,40 @@ async function testDynamicCountdownTemplateUpdates() {
   card.disconnectedCallback();
 }
 
+async function testDynamicEntryTemplateSubscriptionsAreReconciled() {
+  const template = "{{ states('sensor.birthdays') }}";
+  const cardTemplate = "{{ states('sensor.card_title') }}";
+  const manualTemplate = "{{ states('sensor.manual_title') }}";
+  const removedTemplate = "{{ states('sensor.removed') }}";
+  const mount = await mountCard({
+    type: 'custom:timeflow-card',
+    style: 'listy',
+    title: cardTemplate,
+    countdowns: [{ title: manualTemplate, target_date: '2099-06-12' }],
+    countdowns_template: template,
+  });
+  const { card, hass } = mount;
+  await mount.clock.advance(1000);
+
+  hass.pushTemplate(template, `[{"title":"${removedTemplate}","target_date":"2099-06-12"}]`);
+  await flush();
+  await flush();
+  check('Dynamic countdowns: generated row templates are subscribed',
+    hass.subscribedTemplates().includes(removedTemplate));
+
+  hass.pushTemplate(template, '[{"title":"Generated","target_date":"2099-06-12"}]');
+  await flush();
+  await flush();
+  const activeTemplates = hass.subscribedTemplates();
+  check('Dynamic countdowns: removed generated row templates are unsubscribed',
+    !activeTemplates.includes(removedTemplate));
+  check('Dynamic countdowns: card-level, manual-row, and source templates stay subscribed',
+    activeTemplates.includes(cardTemplate)
+      && activeTemplates.includes(manualTemplate)
+      && activeTemplates.includes(template));
+  card.disconnectedCallback();
+}
+
 async function testDynamicCountdownStaleResultIsDiscarded() {
   const oldTemplate = "{{ states('sensor.old_birthdays') }}";
   const newTemplate = "{{ states('sensor.new_birthdays') }}";
@@ -971,6 +1006,7 @@ async function testBrandTextColourReachesTheRow() {
   await testDaysOnlyCardDoesNotRepaint();
   await testStillListyCardDoesNotRepaint();
   await testDynamicCountdownTemplateUpdates();
+  await testDynamicEntryTemplateSubscriptionsAreReconciled();
   await testDynamicCountdownStaleResultIsDiscarded();
   await testNoTemplatePreservesCountdownConfig();
   await testYamlModeFollowsItsEntry();
