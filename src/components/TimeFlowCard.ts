@@ -1587,7 +1587,9 @@ export class TimeFlowCard extends LitElement {
 
   private _withAllDayEventWindow(entry: CardConfig): CardConfig {
     const targetDate = entry.target_date;
-    if (typeof targetDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) return entry;
+    if (entry.mode === 'count_up'
+      || typeof targetDate !== 'string'
+      || !/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) return entry;
 
     const startTimestamp = DateParser.parseISODate(targetDate);
     if (!Number.isFinite(startTimestamp)) return entry;
