@@ -368,7 +368,10 @@ function countdownsSection(caps: StyleCapabilities): FormSchema[] {
   // Not flattened: ha-form then scopes the value to data.countdowns and wraps
   // what comes back as { countdowns: [...] }, which is the shape an array
   // field needs.
-  return [{ type: 'tf_countdowns', name: 'countdowns' }];
+  return [
+    { type: 'tf_countdowns', name: 'countdowns' },
+    { name: 'countdowns_template', selector: { text: { multiline: true } } },
+  ];
 }
 
 function appearanceSection(caps: StyleCapabilities): FormSchema[] {

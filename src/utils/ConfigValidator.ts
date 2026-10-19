@@ -60,7 +60,10 @@ export class ConfigValidator {
         });
       }
     } else if (!config.timer_entity && !TimerEntityService.hasAutoDiscovery(config)
-      && !(config.style === 'listy' && Array.isArray(config.countdowns) && config.countdowns.length)) {
+      && !(config.style === 'listy' && (
+        (Array.isArray(config.countdowns) && config.countdowns.length > 0)
+        || (typeof config.countdowns_template === 'string' && config.countdowns_template.trim().length > 0)
+      ))) {
       // target_date is only required if no other source (timer_entity, discovery, listy pinned rows) is provided
       errors.push({
         field: 'target_date',

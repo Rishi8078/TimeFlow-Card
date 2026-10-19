@@ -19,6 +19,7 @@ export const FIELD_LABELS: Record<string, string> = {
   'auto_discover_voice_satellite': 'Voice Satellite Timers',
   'auto_discover_timers': 'Native Timers',
   'max_timers': 'Maximum Timers Shown',
+  'countdowns_template': 'Dynamic Countdowns',
   'show_count': 'Row Count Badge',
   'expired_row_animation': 'Finished Row Animation',
   'alexa_icon': 'Icon',
@@ -90,6 +91,7 @@ export const FIELD_HELPERS: Record<string, string> = {
   'section_progress': 'The ring drawn around the countdown.',
   'section_dot_grid': 'Leave Dots empty for the fixed 5 × 20 grid. Auto picks a unit and row count that keep it readable, and dots grow past Size to fill the width.',
   'countdowns': 'Shown alongside the discovered timers, in the order listed.',
+  'countdowns_template': 'Home Assistant Jinja template that must return a JSON array of countdown entries. Generated entries are appended after manually configured countdowns.',
   'section_actions': 'What happens when the card is tapped, held, or double-tapped.',
 
   // Timer Source

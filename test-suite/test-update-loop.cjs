@@ -98,10 +98,10 @@ function createHass({ entities = 0, alexa = false, alexaActive = true } = {}) {
       },
     },
     /** Simulate HA pushing a rendered template result. */
-    pushTemplate(template, result) {
+    pushTemplate(template, result, listeners = { all: false, domains: [], entities: [], time: false }) {
       const sub = subscriptions.find((s) => s.params && s.params.template === template);
       if (!sub) return false;
-      sub.onMessage({ result, listeners: { all: false, domains: [], entities: [], time: false } });
+      sub.onMessage({ result, listeners });
       return true;
     },
     subscriptionCount: () => subscriptions.length,
@@ -779,6 +779,49 @@ async function testStillListyCardDoesNotRepaint() {
   mount.card.disconnectedCallback();
 }
 
+async function testDynamicCountdownTemplateUpdates() {
+  const template = "{{ states('sensor.birthdays') }}";
+  const mount = await mountCard({
+    type: 'custom:timeflow-card',
+    style: 'listy',
+    title: 'Birthdays',
+    countdowns: [{ title: 'Manual', target_date: '2026-09-02T00:00:00' }],
+    countdowns_template: template,
+  });
+  const { card, hass, counters } = mount;
+  await mount.clock.advance(1000);
+
+  check('Dynamic countdowns: Home Assistant template is subscribed',
+    hass.subscribedTemplates().includes(template));
+  const listeners = { all: false, domains: [], entities: ['sensor.birthdays'], time: false };
+  const firstOutput = '[{"title":"First Birthday","target_date":"2026-09-03T00:00:00"}]';
+  hass.pushTemplate(template, firstOutput, listeners);
+  await flush();
+  await flush();
+
+  check('Dynamic countdowns: generated rows append after manual rows',
+    card._resolvedConfig.countdowns.map((entry) => entry.title).join(',') === 'Manual,First Birthday');
+  check('Dynamic countdowns: generated row reaches the list renderer',
+    card._listRows.map((row) => row.title).join(',') === 'Manual,First Birthday');
+  check('Dynamic countdowns: template entity dependencies are watched',
+    card._watchedEntities.includes('sensor.birthdays'));
+
+  const stableEntries = card._resolvedConfig.countdowns;
+  const stableRenders = counters.renders;
+  hass.pushTemplate(template, firstOutput, listeners);
+  await flush();
+  await flush();
+  check('Dynamic countdowns: unchanged output keeps the resolved array and avoids repaint',
+    card._resolvedConfig.countdowns === stableEntries && counters.renders === stableRenders);
+
+  hass.pushTemplate(template, '[{"title":"Updated Birthday","target_date":"2026-09-04T00:00:00"}]', listeners);
+  await flush();
+  await flush();
+  check('Dynamic countdowns: a new template result updates the list',
+    card._listRows.map((row) => row.title).join(',') === 'Manual,Updated Birthday');
+  card.disconnectedCallback();
+}
+
 // The pinned-countdowns editor keeps per-entry panel state by index. Removing an
 // entry above one open in YAML used to leave YAML mode on the old index, so the
 // next entry down opened onto the removed one's stale YAML box.
@@ -868,6 +911,7 @@ async function testBrandTextColourReachesTheRow() {
   await testTemplatesSurviveAConfigChange();
   await testDaysOnlyCardDoesNotRepaint();
   await testStillListyCardDoesNotRepaint();
+  await testDynamicCountdownTemplateUpdates();
   await testYamlModeFollowsItsEntry();
   await testListyStyleCarriesTimerEntityOver();
   await testBrandTextColourReachesTheRow();
