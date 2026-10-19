@@ -115,6 +115,8 @@ export function countdownEntriesEqual(
 
   return first.every((entry, index) => {
     const other = second[index];
+    if (entry === other) return true;
+    if (!entry || !other || typeof entry !== 'object' || typeof other !== 'object') return false;
     const keys = new Set([...Object.keys(entry), ...Object.keys(other)]);
     return Array.from(keys).every((key) =>
       (entry as Record<string, unknown>)[key] === (other as Record<string, unknown>)[key]
