@@ -73,6 +73,12 @@ export class DateParser {
    * @returns {number} - Unix timestamp
    */
   static parseISODateManual(dateString: string): number {
+    if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      if (!this.isValidDateComponents(year, month, day)) return NaN;
+      return new Date(year, month - 1, day).getTime();
+    }
+
     if (typeof dateString === 'string' && dateString.includes('T')) {
       // Check if the string contains timezone information (Z, +XX:XX, -XX:XX)
       const hasTimezone = /[+-]\d{2}:\d{2}$|Z$/.test(dateString);

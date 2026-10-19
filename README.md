@@ -131,7 +131,9 @@ existing WebSocket subscription, not by the card. Return a JSON array whose
 entries use the same fields as `countdowns`; each entry needs a valid
 `target_date` or `timer_entity`. `target_date` accepts the same ISO date/time,
 entity, and template values as a manually configured entry. Date-only strings
-and timezone-naive datetimes keep the card's existing `DateParser` behavior.
+and timezone-naive datetimes are interpreted in the browser's local timezone;
+date-only strings mean midnight on that local calendar date. Timestamps with an
+explicit timezone suffix keep their specified timezone.
 Supported entry fields include `mode`, `title`, `subtitle`, `creation_date`,
 `count_up_goal_date`, `count_up_cycle`, `expired_text`, `header_icon`,
 `header_icon_color`, `header_icon_background`, `background_color`, `text_color`,

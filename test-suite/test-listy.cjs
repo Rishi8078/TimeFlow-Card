@@ -20,13 +20,14 @@ const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tf-listy-'));
 const repoRoot = path.join(__dirname, '..');
 execFileSync(
   process.platform === 'win32' ? 'npx.cmd' : 'npx',
-  ['tsc', 'src/services/Timer.ts', 'src/services/CountdownService.ts', 'src/utils/CountdownTemplate.ts', '--outDir', outDir,
+  ['tsc', 'src/services/Timer.ts', 'src/services/CountdownService.ts', 'src/utils/CountdownTemplate.ts', 'src/utils/DateParser.ts', '--outDir', outDir,
    '--module', 'commonjs', '--target', 'es2020', '--skipLibCheck'],
   { cwd: repoRoot, stdio: 'pipe' }
 );
 const { TimerEntityService } = require(path.join(outDir, 'services', 'Timer.js'));
 const { CountdownService } = require(path.join(outDir, 'services', 'CountdownService.js'));
 const { ConfigValidator } = require(path.join(outDir, 'utils', 'ConfigValidator.js'));
+const { DateParser } = require(path.join(outDir, 'utils', 'DateParser.js'));
 const {
   combineCountdownEntries,
   countdownEntriesEqual,
@@ -41,6 +42,23 @@ const results = [];
 function check(name, pass, detail) {
   results.push({ name, pass });
   console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}${detail ? `  (${detail})` : ''}`);
+}
+
+{
+  const originalTimezone = process.env.TZ;
+  try {
+    process.env.TZ = 'Europe/Madrid';
+    const dateOnly = DateParser.parseISODate('2026-10-20');
+    const localMidnight = new Date(2026, 9, 20).getTime();
+    const naiveDateTime = DateParser.parseISODate('2026-10-20T00:00:00');
+    const utcDateTime = DateParser.parseISODate('2026-10-20T00:00:00Z');
+    check('Date parsing: date-only values use local midnight in non-UTC zones', dateOnly === localMidnight);
+    check('Date parsing: date-only matches a timezone-naive midnight datetime', dateOnly === naiveDateTime);
+    check('Date parsing: explicit UTC timestamps keep their absolute timezone', utcDateTime !== dateOnly);
+  } finally {
+    if (originalTimezone === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTimezone;
+  }
 }
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
