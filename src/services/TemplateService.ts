@@ -95,6 +95,7 @@ export class TemplateService {
 
   beginPass(): void {
     this._activeTemplates.clear();
+    this._staticEntityReads.clear();
   }
 
   async reconcileTemplates(): Promise<void> {
