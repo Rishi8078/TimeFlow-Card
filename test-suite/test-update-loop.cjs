@@ -822,6 +822,58 @@ async function testDynamicCountdownTemplateUpdates() {
   card.disconnectedCallback();
 }
 
+async function testDynamicCountdownStaleResultIsDiscarded() {
+  const oldTemplate = "{{ states('sensor.old_birthdays') }}";
+  const newTemplate = "{{ states('sensor.new_birthdays') }}";
+  const mount = await mountCard({
+    type: 'custom:timeflow-card',
+    style: 'listy',
+    title: 'Birthdays',
+    countdowns_template: oldTemplate,
+  });
+  const { card } = mount;
+  let releaseOldTemplate;
+  let delayOldTemplate = true;
+  card.templateService.evaluateTemplate = async (template) => {
+    if (template === oldTemplate && delayOldTemplate) {
+      delayOldTemplate = false;
+      await new Promise((resolve) => { releaseOldTemplate = resolve; });
+      return '[{"title":"Stale","target_date":"2026-09-03T00:00:00"}]';
+    }
+    if (template === newTemplate) {
+      return '[{"title":"Current","target_date":"2026-09-04T00:00:00"}]';
+    }
+    return '';
+  };
+
+  const stalePass = card._updateCountdownAndRender();
+  await flush();
+  card.setConfig({
+    type: 'custom:timeflow-card',
+    style: 'listy',
+    title: 'Birthdays',
+    countdowns_template: newTemplate,
+  });
+  releaseOldTemplate();
+  await stalePass;
+
+  check('Dynamic countdowns: a stale result cannot replace newer configuration',
+    card._resolvedConfig.countdowns.map((entry) => entry.title).join(',') === 'Current');
+  card.disconnectedCallback();
+}
+
+async function testNoTemplatePreservesCountdownConfig() {
+  const mount = await mountCard({
+    type: 'custom:timeflow-card',
+    style: 'listy',
+    title: 'Timers',
+    auto_discover_timers: true,
+  });
+  check('Dynamic countdowns: configurations without the option retain their shape',
+    !Object.prototype.hasOwnProperty.call(mount.card._resolvedConfig, 'countdowns'));
+  mount.card.disconnectedCallback();
+}
+
 // The pinned-countdowns editor keeps per-entry panel state by index. Removing an
 // entry above one open in YAML used to leave YAML mode on the old index, so the
 // next entry down opened onto the removed one's stale YAML box.
@@ -912,6 +964,8 @@ async function testBrandTextColourReachesTheRow() {
   await testDaysOnlyCardDoesNotRepaint();
   await testStillListyCardDoesNotRepaint();
   await testDynamicCountdownTemplateUpdates();
+  await testDynamicCountdownStaleResultIsDiscarded();
+  await testNoTemplatePreservesCountdownConfig();
   await testYamlModeFollowsItsEntry();
   await testListyStyleCarriesTimerEntityOver();
   await testBrandTextColourReachesTheRow();

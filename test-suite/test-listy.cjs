@@ -122,6 +122,7 @@ function hassWith(states) {
     '{}', '"text"', '42', 'true', 'null',
     '[null]', '[1,"text",false]', '[[]]', '[[{"target_date":"2099-06-12"}]]',
     '[{"title":"No source"}]', '[{"timer_entity":"not an entity"}]',
+    '[{"timer_entity":"not an entity","target_date":"2099-06-12"}]',
   ]) {
     check(`Dynamic entries: rejects invalid JSON values or members (${output})`,
       parseCountdownTemplate(output).length === 0);

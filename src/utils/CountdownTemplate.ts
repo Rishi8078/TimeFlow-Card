@@ -56,13 +56,21 @@ function parseEntry(value: unknown): ListEntryConfig | undefined {
   const hasTimer = typeof candidate.timer_entity === 'string'
     && candidate.timer_entity.trim().length > 0
     && ConfigValidator.isValidEntityId(candidate.timer_entity);
+  if (typeof candidate.timer_entity === 'string'
+    && candidate.timer_entity.trim().length > 0
+    && !hasTimer) {
+    return undefined;
+  }
   const hasDate = typeof candidate.target_date === 'string'
     && ConfigValidator.isValidDateInput(candidate.target_date);
   if (!hasTimer && !hasDate) return undefined;
 
   const entry: Record<string, unknown> = {};
   for (const field of ENTRY_FIELDS) {
-    if (candidate[field] !== undefined) entry[field] = candidate[field];
+    if (candidate[field] === undefined) continue;
+    if (field === 'timer_entity' && !hasTimer) continue;
+    if (field === 'target_date' && !hasDate) continue;
+    entry[field] = candidate[field];
   }
   return entry as ListEntryConfig;
 }

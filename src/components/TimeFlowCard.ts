@@ -1278,19 +1278,19 @@ export class TimeFlowCard extends LitElement {
     const config = this.config;
     const resolvedConfig = { ...config };
 
-    if (config.style === 'listy') {
+    const countdownsTemplate = config.countdowns_template;
+    if (config.style === 'listy'
+      && typeof countdownsTemplate === 'string'
+      && countdownsTemplate.trim().length > 0) {
       let generatedEntries: ListEntryConfig[] = [];
-      const template = config.countdowns_template;
-      if (typeof template === 'string' && template.trim().length > 0) {
-        try {
-          // The Home Assistant subscription supplies both rendered JSON and its
-          // entity dependency list; do not evaluate Jinja in the browser.
-          generatedEntries = parseCountdownTemplate(
-            await this.templateService.evaluateTemplate(template, this.hass)
-          );
-        } catch {
-          console.warn('[TimeFlow] Could not evaluate countdowns_template.');
-        }
+      try {
+        // The Home Assistant subscription supplies both rendered JSON and its
+        // entity dependency list; do not evaluate Jinja in the browser.
+        generatedEntries = parseCountdownTemplate(
+          await this.templateService.evaluateTemplate(countdownsTemplate, this.hass)
+        );
+      } catch {
+        console.warn('[TimeFlow] Could not evaluate countdowns_template.');
       }
 
       // A config may change while the template subscription is resolving. Its
