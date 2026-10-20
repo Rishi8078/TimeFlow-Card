@@ -768,6 +768,15 @@ async function testEventRowsStayActiveUntilTheirEnd() {
   process.env.TZ = 'Europe/Madrid';
   try {
     const listy = { type: 'custom:timeflow-card', style: 'listy', title: 'Events' };
+    const manualDateOnly = await mountCard({
+      ...listy,
+      countdowns: [{ title: 'Manual date', target_date: '2026-08-31' }],
+    });
+    check('Events: manual date-only countdowns keep their original midnight expiry',
+      manualDateOnly.card._listRows[0].state === 'finished',
+      JSON.stringify(manualDateOnly.card._listRows[0]));
+    manualDateOnly.card.disconnectedCallback();
+
     const timed = await mountCard({
       ...listy,
       countdowns: [{
@@ -890,11 +899,14 @@ async function testDynamicEntryTemplateSubscriptionsAreReconciled() {
   const { card, hass } = mount;
   await mount.clock.advance(1000);
 
-  hass.pushTemplate(template, `[{"title":"${removedTemplate}","target_date":"2099-06-12"}]`);
+  hass.states['sensor.old_date'] = { state: '2099-06-12', attributes: {} };
+  hass.pushTemplate(template, `[{"title":"${removedTemplate}","target_date":"sensor.old_date"}]`);
   await flush();
   await flush();
   check('Dynamic countdowns: generated row templates are subscribed',
     hass.subscribedTemplates().includes(removedTemplate));
+  check('Dynamic countdowns: generated direct entity dependencies are watched',
+    card._watchedEntities.includes('sensor.old_date'));
 
   hass.pushTemplate(template, '[{"title":"Generated","target_date":"2099-06-12"}]');
   await flush();
@@ -902,6 +914,8 @@ async function testDynamicEntryTemplateSubscriptionsAreReconciled() {
   const activeTemplates = hass.subscribedTemplates();
   check('Dynamic countdowns: removed generated row templates are unsubscribed',
     !activeTemplates.includes(removedTemplate));
+  check('Dynamic countdowns: removed generated direct entity dependencies are no longer watched',
+    !card._watchedEntities.includes('sensor.old_date'), card._watchedEntities.join(', '));
   check('Dynamic countdowns: card-level, manual-row, and source templates stay subscribed',
     activeTemplates.includes(cardTemplate)
       && activeTemplates.includes(manualTemplate)
@@ -1034,6 +1048,43 @@ async function testBrandTextColourReachesTheRow() {
   bare.card.disconnectedCallback();
 }
 
+async function testDelayedTemplateSubscriptionPassesAreSerialized() {
+  const sourceTemplate = "{{ states('sensor.birthdays') }}";
+  const rowTemplate = "{{ states('sensor.row_title') }}";
+  const mount = await mountCard({
+    type: 'custom:timeflow-card',
+    style: 'listy',
+    title: 'Birthdays',
+    countdowns_template: sourceTemplate,
+  });
+  const { card, hass } = mount;
+  const subscribeMessage = hass.connection.subscribeMessage.bind(hass.connection);
+  let releaseSubscription;
+  hass.connection.subscribeMessage = (onMessage, params) => {
+    const subscription = subscribeMessage(onMessage, params);
+    if (params.template !== rowTemplate) return subscription;
+    return new Promise((resolve) => {
+      releaseSubscription = () => resolve(subscription);
+    });
+  };
+
+  hass.pushTemplate(sourceTemplate, [{ title: rowTemplate, target_date: '2099-06-12' }]);
+  for (let attempt = 0; attempt < 10 && !releaseSubscription; attempt++) await flush();
+  const subscriptionWasDelayed = typeof releaseSubscription === 'function';
+  if (subscriptionWasDelayed) {
+    hass.pushTemplate(sourceTemplate, []);
+    releaseSubscription();
+    for (let attempt = 0; attempt < 10; attempt++) await flush();
+  }
+
+  const activeTemplates = hass.subscribedTemplates();
+  check('Dynamic countdowns: a delayed row subscription does not overlap update passes',
+    subscriptionWasDelayed && !activeTemplates.includes(rowTemplate)
+      && activeTemplates.includes(sourceTemplate),
+    activeTemplates.join(', '));
+  card.disconnectedCallback();
+}
+
 // ---------------------------------------------------------------- main
 (async () => {
   console.log('\nUpdate-loop harness\n' + '='.repeat(62));
@@ -1052,6 +1103,7 @@ async function testBrandTextColourReachesTheRow() {
   await testStillListyCardDoesNotRepaint();
   await testDynamicCountdownTemplateUpdates();
   await testDynamicEntryTemplateSubscriptionsAreReconciled();
+  await testDelayedTemplateSubscriptionPassesAreSerialized();
   await testDynamicCountdownStaleResultIsDiscarded();
   await testNoTemplatePreservesCountdownConfig();
   await testYamlModeFollowsItsEntry();

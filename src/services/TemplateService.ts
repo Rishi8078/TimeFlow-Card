@@ -64,9 +64,7 @@ export class TemplateService {
   // Flag to track connection state
   private _connected: boolean = false;
 
-  // Entity ids this card has resolved directly (e.g. target_date: sensor.foo).
-  // Accumulated rather than reset per pass: a card's config keys are stable, so
-  // the set converges immediately and never needs invalidating.
+  // Entity ids this card resolved directly during the current update pass.
   private _staticEntityReads: Set<string> = new Set();
 
   constructor() { }

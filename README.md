@@ -119,7 +119,7 @@ countdowns:
 | :-- | :-- | :-- | :-- |
 | `max_timers` | number | `5` | Discovered rows to draw before the list is truncated (`1`-`20`). Pinned countdowns are never truncated. |
 | `countdowns` | list | `[]` | Countdowns pinned into the list. Each entry takes `target_date`, `creation_date`, `count_up_goal_date`, `count_up_cycle`, `mode`, `title`, `subtitle`, `expired_text`, `header_icon`, `header_icon_color`, `header_icon_background`, `background_color`, `text_color` and `progress_color`. |
-IN | `countdowns_template` | string | `null` | Home Assistant Jinja template returning a JSON array of countdown entries. Valid generated entries are appended after `countdowns`. |
+| `countdowns_template` | string | `null` | Home Assistant Jinja template returning a JSON array of countdown entries. Valid generated entries are appended after `countdowns`. |
 | `show_count` | boolean | `true` | Row-count badge in the header. |
 | `expired_row_animation` | string | `none` | What a finished row does to get noticed: `swing` or `pulse` (icon only), `shake` or `hop` (whole row). Honours the system's reduced-motion setting. |
 | `timer_entities` | list | `[]` | Native timers to discover. Empty or unset discovers every `timer.*` entity. |
@@ -132,11 +132,13 @@ entries use the same fields as `countdowns`; each entry needs a valid
 `target_date` or `timer_entity`. `target_date` accepts the same ISO date/time,
 entity, and template values as a manually configured entry. Timezone-naive
 datetimes are interpreted in the browser's local timezone; timestamps with an
-explicit timezone suffix keep their specified timezone. In a `listy` entry, a
-date-only `target_date` represents an all-day event: it runs from local midnight
-on that date until local midnight the following day. If `creation_date` is not
-provided, progress starts at the beginning of that day. For timed events, use
-`creation_date` for the start and `target_date` for the finish.
+explicit timezone suffix keep their specified timezone. For generated `listy`
+count-down entries, a date-only `target_date` represents an all-day event: it
+runs from local midnight on that date until local midnight the following day.
+If `creation_date` is not provided, progress starts at the beginning of that
+day. Manually configured entries retain their existing date-only behavior.
+Count-up entries are not shifted. For timed events, use `creation_date` for the
+start and `target_date` for the finish.
 Supported entry fields include `mode`, `title`, `subtitle`, `creation_date`,
 `count_up_goal_date`, `count_up_cycle`, `expired_text`, `header_icon`,
 `header_icon_color`, `header_icon_background`, `background_color`, `text_color`,

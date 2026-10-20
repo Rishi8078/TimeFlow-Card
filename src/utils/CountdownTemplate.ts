@@ -35,6 +35,18 @@ const ENTRY_STRING_FIELDS = [
   'progress_color',
 ] as const;
 
+function isValidCalendarDate(value: string): boolean {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return true;
+
+  const [, year, month, day] = match.map(Number);
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  return date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day;
+}
+
 function parseEntry(value: unknown): ListEntryConfig | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
   const candidate = value as Record<string, unknown>;
@@ -64,7 +76,8 @@ function parseEntry(value: unknown): ListEntryConfig | undefined {
   const hasDate = typeof candidate.target_date === 'string'
     && (ConfigValidator.isTemplate(candidate.target_date)
       || ConfigValidator.isValidEntityId(candidate.target_date)
-      || !Number.isNaN(new Date(candidate.target_date).getTime()));
+      || (isValidCalendarDate(candidate.target_date)
+        && !Number.isNaN(new Date(candidate.target_date).getTime())));
   if (!hasTimer && !hasDate) return undefined;
 
   const entry: Record<string, unknown> = {};

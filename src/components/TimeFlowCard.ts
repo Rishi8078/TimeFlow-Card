@@ -1649,6 +1649,9 @@ export class TimeFlowCard extends LitElement {
    */
   private async _buildEntryRows(config: CardConfig): Promise<ListRow[]> {
     const entries = Array.isArray(config.countdowns) ? config.countdowns : [];
+    const generatedEntryStart = Array.isArray(this.config.countdowns)
+      ? this.config.countdowns.length
+      : 0;
     this._listEntryDeadlineMs = null;
     if (entries.length === 0) return [];
     let soonestMs = Number.POSITIVE_INFINITY;
@@ -1660,7 +1663,10 @@ export class TimeFlowCard extends LitElement {
       const entry = entries[index];
       if (!entry || typeof entry !== 'object') continue;
 
-      const entryConfig = this._withAllDayEventWindow(await this._resolveEntryTemplates(entry));
+      const resolvedEntry = await this._resolveEntryTemplates(entry);
+      const entryConfig = index >= generatedEntryStart
+        ? this._withAllDayEventWindow(resolvedEntry)
+        : resolvedEntry;
       const service = this._entryCountdown;
       service.beginPass();
 

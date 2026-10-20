@@ -123,6 +123,19 @@ function hassWith(states) {
 {
   const single = parseCountdownTemplate('[{"title":"Birthday","target_date":"2099-06-12"}]');
   check('Dynamic entries: parses one date countdown', single.length === 1 && single[0].title === 'Birthday');
+  check('Dynamic entries: rejects impossible date-only and ISO datetime values',
+    parseCountdownTemplate(JSON.stringify([
+      { target_date: '2026-02-30' },
+      { target_date: '2026-02-30T12:00:00Z' },
+    ])).length === 0);
+  const validDates = parseCountdownTemplate(JSON.stringify([
+    { title: 'Date-only', target_date: '2028-02-29' },
+    { title: 'Timezone-aware', target_date: '2026-10-20T12:30:00+02:00' },
+  ]));
+  check('Dynamic entries: accepts valid date-only and timezone-aware values',
+    validDates.length === 2
+      && validDates[0].target_date === '2028-02-29'
+      && validDates[1].target_date === '2026-10-20T12:30:00+02:00');
 
   // Home Assistant's render_template subscription delivers JSON output as a native array.
   const native = parseCountdownTemplate([
