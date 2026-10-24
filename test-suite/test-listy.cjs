@@ -20,12 +20,19 @@ const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tf-listy-'));
 const repoRoot = path.join(__dirname, '..');
 execFileSync(
   process.platform === 'win32' ? 'npx.cmd' : 'npx',
-  ['tsc', 'src/services/Timer.ts', 'src/services/CountdownService.ts', '--outDir', outDir,
+  ['tsc', 'src/services/Timer.ts', 'src/services/CountdownService.ts', 'src/utils/CountdownTemplate.ts', 'src/utils/DateParser.ts', '--outDir', outDir,
    '--module', 'commonjs', '--target', 'es2020', '--skipLibCheck'],
   { cwd: repoRoot, stdio: 'pipe' }
 );
 const { TimerEntityService } = require(path.join(outDir, 'services', 'Timer.js'));
 const { CountdownService } = require(path.join(outDir, 'services', 'CountdownService.js'));
+const { ConfigValidator } = require(path.join(outDir, 'utils', 'ConfigValidator.js'));
+const { DateParser } = require(path.join(outDir, 'utils', 'DateParser.js'));
+const {
+  combineCountdownEntries,
+  countdownEntriesEqual,
+  parseCountdownTemplate,
+} = require(path.join(outDir, 'utils', 'CountdownTemplate.js'));
 
 const ALEXA = 'sensor.kitchen_next_timer';
 const GOOGLE = 'sensor.bedroom_speaker_timers';
@@ -92,6 +99,124 @@ function voiceTimer(id, name, totalSeconds, startedAtSec, spokenSeconds, isActiv
 /** Minimal hass stub: the services only ever read hass.states. */
 function hassWith(states) {
   return { states };
+}
+
+// ── Dynamic countdown parsing and combination ───────────────────────────────
+
+{
+  const single = parseCountdownTemplate('[{"title":"Birthday","target_date":"2099-06-12"}]');
+  check('Dynamic entries: parses one date countdown', single.length === 1 && single[0].title === 'Birthday');
+  check('Dynamic entries: rejects impossible date-only and ISO datetime values',
+    parseCountdownTemplate(JSON.stringify([
+      { target_date: '2026-02-30' },
+      { target_date: '2026-02-30T12:00:00Z' },
+    ])).length === 0);
+  const validDates = parseCountdownTemplate(JSON.stringify([
+    { title: 'Date-only', target_date: '2028-02-29' },
+    { title: 'Timezone-aware', target_date: '2026-10-20T12:30:00+02:00' },
+  ]));
+  check('Dynamic entries: accepts valid date-only and timezone-aware values',
+    validDates.length === 2
+      && validDates[0].target_date === '2028-02-29'
+      && validDates[1].target_date === '2026-10-20T12:30:00+02:00');
+
+  // Home Assistant's render_template subscription delivers JSON output as a native array.
+  const native = parseCountdownTemplate([
+    { title: 'Native', target_date: '2099-06-12', header_icon: 'mdi:cake-variant' },
+    { title: 'No source' },
+    'text',
+  ]);
+  check('Dynamic entries: accepts a native array and filters invalid members',
+    native.length === 1 && native[0].title === 'Native' && native[0].header_icon === 'mdi:cake-variant');
+  check('Dynamic entries: a native non-array result is ignored',
+    parseCountdownTemplate({ title: 'x', target_date: '2099-06-12' }).length === 0
+      && parseCountdownTemplate(42).length === 0
+      && parseCountdownTemplate(null).length === 0);
+
+  const multiple = parseCountdownTemplate(
+    '[{"title":"First","target_date":"2099-06-12"},{"title":"Second","timer_entity":"timer.second"}]'
+  );
+  check('Dynamic entries: parses multiple supported sources', multiple.length === 2);
+  check('Dynamic entries: keeps date and timer entity sources',
+    multiple[0].target_date === '2099-06-12' && multiple[1].timer_entity === 'timer.second');
+
+  for (const output of ['', ' \n\t', '{malformed']) {
+    check(`Dynamic entries: empty or malformed output is ignored (${JSON.stringify(output)})`,
+      parseCountdownTemplate(output).length === 0);
+  }
+
+  for (const output of [
+    '{}', '"text"', '42', 'true', 'null',
+    '[null]', '[1,"text",false]', '[[]]', '[[{"target_date":"2099-06-12"}]]',
+    '[{"title":"No source"}]', '[{"timer_entity":"not an entity"}]',
+    '[{"timer_entity":"not an entity","target_date":"2099-06-12"}]',
+  ]) {
+    check(`Dynamic entries: rejects invalid JSON values or members (${output})`,
+      parseCountdownTemplate(output).length === 0);
+  }
+
+  const optional = parseCountdownTemplate(JSON.stringify([{
+    title: 'Birthday',
+    target_date: '2099-06-12',
+    mode: 'count_down',
+    creation_date: '2099-01-01',
+    count_up_goal_date: '2099-12-31',
+    count_up_cycle: '30d',
+    subtitle: 'Turning another year older',
+    expired_text: 'Happy birthday!',
+    header_icon: 'mdi:cake-variant',
+    header_icon_color: '#ffffff',
+    header_icon_background: '#ff00ff',
+    background_color: '#000000',
+    text_color: '#ffffff',
+    progress_color: '#00ff00',
+  }]));
+  check('Dynamic entries: preserves supported optional fields',
+    optional.length === 1
+      && optional[0].header_icon === 'mdi:cake-variant'
+      && optional[0].subtitle === 'Turning another year older'
+      && optional[0].progress_color === '#00ff00');
+
+  check('Dynamic entries: filters entries with invalid optional field types',
+    parseCountdownTemplate('[{"target_date":"2099-06-12","mode":"invalid"}]').length === 0);
+
+  const staticEntries = [{ title: 'Manual', target_date: '2099-01-01' }];
+  const generatedEntries = parseCountdownTemplate('[{"title":"Generated","target_date":"2099-06-12"}]');
+  const staticOnly = combineCountdownEntries(staticEntries, []);
+  const dynamicOnly = combineCountdownEntries(undefined, generatedEntries);
+  const both = combineCountdownEntries(staticEntries, generatedEntries);
+  check('Dynamic entries: static-only, dynamic-only, and combined lists are supported',
+    staticOnly.length === 1 && dynamicOnly.length === 1 && both.length === 2);
+  check('Dynamic entries: manual countdowns precede generated entries',
+    both[0].title === 'Manual' && both[1].title === 'Generated');
+  check('Dynamic entries: empty or malformed output keeps static countdowns',
+    combineCountdownEntries(staticEntries, parseCountdownTemplate('')).length === 1
+      && combineCountdownEntries(staticEntries, parseCountdownTemplate('{')).length === 1);
+  check('Dynamic entries: combining does not mutate the static configuration',
+    staticEntries.length === 1 && staticEntries[0].title === 'Manual' && both !== staticEntries);
+  check('Dynamic entries: unchanged parsed values compare equal',
+    countdownEntriesEqual(generatedEntries, parseCountdownTemplate('[{"title":"Generated","target_date":"2099-06-12"}]')));
+  check('Dynamic entries: changed parsed values compare unequal',
+    !countdownEntriesEqual(generatedEntries, parseCountdownTemplate('[{"title":"Changed","target_date":"2099-06-12"}]')));
+}
+
+// ── Dynamic countdown validation ────────────────────────────────────────────
+
+{
+  const dynamic = { type: 'custom:timeflow-card', style: 'listy', countdowns_template: '{{ [] | tojson }}' };
+  const blank = { ...dynamic, countdowns_template: ' \n ' };
+  const otherStyle = { type: 'custom:timeflow-card', style: 'classic', countdowns_template: '{{ [] | tojson }}' };
+  const staticList = { type: 'custom:timeflow-card', style: 'listy', countdowns: [{ target_date: '2099-01-01' }] };
+  check('Validation: a non-empty dynamic template satisfies listy source requirement',
+    ConfigValidator.validateConfig(dynamic).isValid);
+  check('Validation: an empty dynamic template does not satisfy listy source requirement',
+    !ConfigValidator.validateConfig(blank).isValid);
+  check('Validation: dynamic templates do not satisfy other styles source requirement',
+    !ConfigValidator.validateConfig(otherStyle).isValid);
+  check('Validation: existing static listy countdown configuration remains valid',
+    ConfigValidator.validateConfig(staticList).isValid);
+  check('Validation: existing date countdown configuration remains valid',
+    ConfigValidator.validateConfig({ type: 'custom:timeflow-card', target_date: '2099-01-01' }).isValid);
 }
 
 // ── Alexa ───────────────────────────────────────────────────────────────────

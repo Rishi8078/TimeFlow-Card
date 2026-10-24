@@ -23,7 +23,7 @@ export interface HomeAssistant {
 
 // WebSocket template rendering types (matches Home Assistant's API)
 export interface RenderTemplateResult {
-  result: string;
+  result: unknown;
   listeners: TemplateListeners;
 }
 
@@ -188,6 +188,7 @@ export interface CardConfig {
   show_count?: boolean;           // Row-count badge in the list header (default true)
   expired_row_animation?: 'none' | 'swing' | 'pulse' | 'shake' | 'hop'; // How a finished row asks to be noticed (default none)
   countdowns?: ListEntryConfig[]; // Countdown entries pinned to the list, alongside any discovered timers
+  countdowns_template?: string;   // Home Assistant template returning a JSON array of pinned countdown entries
   // Per-source styling for the discovered rows. Colour and background are a
   // pair: the glyph sits on the chip, so setting one without the other leaves
   // a mismatched pill.

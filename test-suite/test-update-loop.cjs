@@ -93,19 +93,20 @@ function createHass({ entities = 0, alexa = false, alexaActive = true } = {}) {
     user: { name: 'Test' },
     connection: {
       subscribeMessage(onMessage, params) {
-        subscriptions.push({ onMessage, params });
-        return Promise.resolve(() => {});
+        const subscription = { onMessage, params, active: true };
+        subscriptions.push(subscription);
+        return Promise.resolve(() => { subscription.active = false; });
       },
     },
     /** Simulate HA pushing a rendered template result. */
-    pushTemplate(template, result) {
-      const sub = subscriptions.find((s) => s.params && s.params.template === template);
+    pushTemplate(template, result, listeners = { all: false, domains: [], entities: [], time: false }) {
+      const sub = subscriptions.find((s) => s.active && s.params && s.params.template === template);
       if (!sub) return false;
-      sub.onMessage({ result, listeners: { all: false, domains: [], entities: [], time: false } });
+      sub.onMessage({ result, listeners });
       return true;
     },
-    subscriptionCount: () => subscriptions.length,
-    subscribedTemplates: () => subscriptions.map((s) => s.params && s.params.template),
+    subscriptionCount: () => subscriptions.filter((s) => s.active).length,
+    subscribedTemplates: () => subscriptions.filter((s) => s.active).map((s) => s.params && s.params.template),
   };
 }
 
@@ -762,6 +763,42 @@ async function testPinnedRowsSetTheWakeDeadline() {
     many.card.getCardSize() === 4, `size ${many.card.getCardSize()}`);
 }
 
+async function testEventRowsStayActiveUntilTheirEnd() {
+  const originalTimezone = process.env.TZ;
+  process.env.TZ = 'Europe/Madrid';
+  try {
+    const listy = { type: 'custom:timeflow-card', style: 'listy', title: 'Events' };
+    const manualDateOnly = await mountCard({
+      ...listy,
+      countdowns: [{ title: 'Manual date', target_date: '2026-08-31' }],
+    });
+    check('Events: manual date-only countdowns keep their original midnight expiry',
+      manualDateOnly.card._listRows[0].state === 'finished',
+      JSON.stringify(manualDateOnly.card._listRows[0]));
+    manualDateOnly.card.disconnectedCallback();
+
+    const timed = await mountCard({
+      ...listy,
+      countdowns: [{
+        title: 'Timed event',
+        target_date: '2026-08-31T13:00:00Z',
+        creation_date: '2026-08-31T12:00:00Z',
+        expired_text: 'Event ended',
+      }],
+    });
+    check('Events: a started event counts down to its finish timestamp',
+      timed.card._listRows[0].state === 'running');
+    await timed.clock.advance(61 * 60 * 1000);
+    check('Events: an event enters its finished state at the finish timestamp',
+      timed.card._listRows[0].state === 'finished' && timed.card._listRows[0].subtitle === 'Event ended');
+    timed.card.disconnectedCallback();
+
+  } finally {
+    if (originalTimezone === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTimezone;
+  }
+}
+
 // A listy card whose rows hold still must not repaint: the rows array is rebuilt
 // every pass, and it used to be reactive state, so each rebuild repainted.
 async function testStillListyCardDoesNotRepaint() {
@@ -776,6 +813,147 @@ async function testStillListyCardDoesNotRepaint() {
   check('a listy card with still rows never repaints',
     mount.counters.recomputes > 0 && mount.counters.renders === 0,
     `${mount.counters.recomputes} wakes, ${mount.counters.renders} renders in 2 minutes`);
+  mount.card.disconnectedCallback();
+}
+
+async function testDynamicCountdownTemplateUpdates() {
+  const template = "{{ states('sensor.birthdays') }}";
+  const mount = await mountCard({
+    type: 'custom:timeflow-card',
+    style: 'listy',
+    title: 'Birthdays',
+    countdowns: [{ title: 'Manual', target_date: '2026-09-02T00:00:00' }],
+    countdowns_template: template,
+  });
+  const { card, hass, counters } = mount;
+  await mount.clock.advance(1000);
+
+  check('Dynamic countdowns: Home Assistant template is subscribed',
+    hass.subscribedTemplates().includes(template));
+  const listeners = { all: false, domains: [], entities: ['sensor.birthdays'], time: false };
+  const firstOutput = '[{"title":"First Birthday","target_date":"2026-09-03T00:00:00"}]';
+  hass.pushTemplate(template, firstOutput, listeners);
+  await flush();
+  await flush();
+
+  check('Dynamic countdowns: generated rows append after manual rows',
+    card._resolvedConfig.countdowns.map((entry) => entry.title).join(',') === 'Manual,First Birthday');
+  check('Dynamic countdowns: generated row reaches the list renderer',
+    card._listRows.map((row) => row.title).join(',') === 'Manual,First Birthday');
+  check('Dynamic countdowns: template entity dependencies are watched',
+    card._watchedEntities.includes('sensor.birthdays'));
+
+  const stableEntries = card._resolvedConfig.countdowns;
+  const stableRenders = counters.renders;
+  hass.pushTemplate(template, firstOutput, listeners);
+  await flush();
+  await flush();
+  check('Dynamic countdowns: unchanged output keeps the resolved array and avoids repaint',
+    card._resolvedConfig.countdowns === stableEntries && counters.renders === stableRenders);
+
+  hass.pushTemplate(template, '[{"title":"Updated Birthday","target_date":"2026-09-04T00:00:00"}]', listeners);
+  await flush();
+  await flush();
+  check('Dynamic countdowns: a new template result updates the list',
+    card._listRows.map((row) => row.title).join(',') === 'Manual,Updated Birthday');
+
+  // Home Assistant parses JSON-looking template output into a native array.
+  hass.pushTemplate(template, [{ title: 'Native Birthday', target_date: '2026-09-05T00:00:00' }], listeners);
+  await flush();
+  await flush();
+  check('Dynamic countdowns: a native array template result is rendered',
+    card._listRows.map((row) => row.title).join(',') === 'Manual,Native Birthday');
+  card.disconnectedCallback();
+}
+
+async function testDynamicEntryTemplateSubscriptionsAreReconciled() {
+  const template = "{{ states('sensor.birthdays') }}";
+  const cardTemplate = "{{ states('sensor.card_title') }}";
+  const manualTemplate = "{{ states('sensor.manual_title') }}";
+  const removedTemplate = "{{ states('sensor.removed') }}";
+  const mount = await mountCard({
+    type: 'custom:timeflow-card',
+    style: 'listy',
+    title: cardTemplate,
+    countdowns: [{ title: manualTemplate, target_date: '2099-06-12' }],
+    countdowns_template: template,
+  });
+  const { card, hass } = mount;
+  await mount.clock.advance(1000);
+
+  hass.states['sensor.old_date'] = { state: '2099-06-12', attributes: {} };
+  hass.pushTemplate(template, `[{"title":"${removedTemplate}","target_date":"sensor.old_date"}]`);
+  await flush();
+  await flush();
+  check('Dynamic countdowns: generated row templates are subscribed',
+    hass.subscribedTemplates().includes(removedTemplate));
+  check('Dynamic countdowns: generated direct entity dependencies are watched',
+    card._watchedEntities.includes('sensor.old_date'));
+
+  hass.pushTemplate(template, '[{"title":"Generated","target_date":"2099-06-12"}]');
+  await flush();
+  await flush();
+  const activeTemplates = hass.subscribedTemplates();
+  check('Dynamic countdowns: removed generated row templates are unsubscribed',
+    !activeTemplates.includes(removedTemplate));
+  check('Dynamic countdowns: removed generated direct entity dependencies are no longer watched',
+    !card._watchedEntities.includes('sensor.old_date'), card._watchedEntities.join(', '));
+  check('Dynamic countdowns: card-level, manual-row, and source templates stay subscribed',
+    activeTemplates.includes(cardTemplate)
+      && activeTemplates.includes(manualTemplate)
+      && activeTemplates.includes(template));
+  card.disconnectedCallback();
+}
+
+async function testDynamicCountdownStaleResultIsDiscarded() {
+  const oldTemplate = "{{ states('sensor.old_birthdays') }}";
+  const newTemplate = "{{ states('sensor.new_birthdays') }}";
+  const mount = await mountCard({
+    type: 'custom:timeflow-card',
+    style: 'listy',
+    title: 'Birthdays',
+    countdowns_template: oldTemplate,
+  });
+  const { card } = mount;
+  let releaseOldTemplate;
+  let delayOldTemplate = true;
+  card.templateService.evaluateTemplate = async (template) => {
+    if (template === oldTemplate && delayOldTemplate) {
+      delayOldTemplate = false;
+      await new Promise((resolve) => { releaseOldTemplate = resolve; });
+      return '[{"title":"Stale","target_date":"2026-09-03T00:00:00"}]';
+    }
+    if (template === newTemplate) {
+      return '[{"title":"Current","target_date":"2026-09-04T00:00:00"}]';
+    }
+    return '';
+  };
+
+  const stalePass = card._updateCountdownAndRender();
+  await flush();
+  card.setConfig({
+    type: 'custom:timeflow-card',
+    style: 'listy',
+    title: 'Birthdays',
+    countdowns_template: newTemplate,
+  });
+  releaseOldTemplate();
+  await stalePass;
+
+  check('Dynamic countdowns: a stale result cannot replace newer configuration',
+    card._resolvedConfig.countdowns.map((entry) => entry.title).join(',') === 'Current');
+  card.disconnectedCallback();
+}
+
+async function testNoTemplatePreservesCountdownConfig() {
+  const mount = await mountCard({
+    type: 'custom:timeflow-card',
+    style: 'listy',
+    title: 'Timers',
+    auto_discover_timers: true,
+  });
+  check('Dynamic countdowns: configurations without the option retain their shape',
+    !Object.prototype.hasOwnProperty.call(mount.card._resolvedConfig, 'countdowns'));
   mount.card.disconnectedCallback();
 }
 
@@ -852,6 +1030,43 @@ async function testBrandTextColourReachesTheRow() {
   bare.card.disconnectedCallback();
 }
 
+async function testDelayedTemplateSubscriptionPassesAreSerialized() {
+  const sourceTemplate = "{{ states('sensor.birthdays') }}";
+  const rowTemplate = "{{ states('sensor.row_title') }}";
+  const mount = await mountCard({
+    type: 'custom:timeflow-card',
+    style: 'listy',
+    title: 'Birthdays',
+    countdowns_template: sourceTemplate,
+  });
+  const { card, hass } = mount;
+  const subscribeMessage = hass.connection.subscribeMessage.bind(hass.connection);
+  let releaseSubscription;
+  hass.connection.subscribeMessage = (onMessage, params) => {
+    const subscription = subscribeMessage(onMessage, params);
+    if (params.template !== rowTemplate) return subscription;
+    return new Promise((resolve) => {
+      releaseSubscription = () => resolve(subscription);
+    });
+  };
+
+  hass.pushTemplate(sourceTemplate, [{ title: rowTemplate, target_date: '2099-06-12' }]);
+  for (let attempt = 0; attempt < 10 && !releaseSubscription; attempt++) await flush();
+  const subscriptionWasDelayed = typeof releaseSubscription === 'function';
+  if (subscriptionWasDelayed) {
+    hass.pushTemplate(sourceTemplate, []);
+    releaseSubscription();
+    for (let attempt = 0; attempt < 10; attempt++) await flush();
+  }
+
+  const activeTemplates = hass.subscribedTemplates();
+  check('Dynamic countdowns: a delayed row subscription does not overlap update passes',
+    subscriptionWasDelayed && !activeTemplates.includes(rowTemplate)
+      && activeTemplates.includes(sourceTemplate),
+    activeTemplates.join(', '));
+  card.disconnectedCallback();
+}
+
 // ---------------------------------------------------------------- main
 (async () => {
   console.log('\nUpdate-loop harness\n' + '='.repeat(62));
@@ -868,6 +1083,11 @@ async function testBrandTextColourReachesTheRow() {
   await testTemplatesSurviveAConfigChange();
   await testDaysOnlyCardDoesNotRepaint();
   await testStillListyCardDoesNotRepaint();
+  await testDynamicCountdownTemplateUpdates();
+  await testDynamicEntryTemplateSubscriptionsAreReconciled();
+  await testDelayedTemplateSubscriptionPassesAreSerialized();
+  await testDynamicCountdownStaleResultIsDiscarded();
+  await testNoTemplatePreservesCountdownConfig();
   await testYamlModeFollowsItsEntry();
   await testListyStyleCarriesTimerEntityOver();
   await testBrandTextColourReachesTheRow();
@@ -878,6 +1098,7 @@ async function testBrandTextColourReachesTheRow() {
   await testCountUpKeepsTicking();
   await testPassesDoNotOverlap();
   await testPinnedRowsSetTheWakeDeadline();
+  await testEventRowsStayActiveUntilTheirEnd();
 
   console.log('\nBaseline (60s of virtual time, one card)\n' + '-'.repeat(62));
   await baseline('days-only target_date', { ...DAYS_ONLY_CONFIG }, { entities: 1500 });

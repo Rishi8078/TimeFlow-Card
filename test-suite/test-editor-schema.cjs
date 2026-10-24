@@ -378,6 +378,15 @@ const dateCfg = (extra = {}) => ({ type: 'custom:timeflow-card', target_date: '2
   check('Listy: the timer list is not a panel', !listy.includes('Timer List'), listy.join(', '));
   check('Listy: the timer list fields are still reachable',
     fieldNames(computeSchema({ style: 'listy' })).includes('max_timers'));
+  const listyFields = fields(computeSchema({ style: 'listy' }));
+  const dynamicCountdowns = listyFields.find((field) => field.name === 'countdowns_template');
+  check('Listy: dynamic countdown template uses the Jinja code editor',
+    !!dynamicCountdowns && !!dynamicCountdowns.selector?.template);
+  check('Listy: manual countdown editor remains available',
+    listyFields.some((field) => field.type === 'tf_countdowns' && field.name === 'countdowns'));
+  check('Listy: dynamic countdown field is hidden from other styles',
+    STYLES.filter((style) => style !== 'listy')
+      .every((style) => !fieldNames(computeSchema({ style, target_date: 'x' })).includes('countdowns_template')));
   // Discovery settings and the pinned list are separate sections now.
   check('Listy: discovery and the pinned list are separate parts',
     fieldNames(computeDiscoverySchemaRef({ style: 'listy' })).includes('auto_discover_alexa')
@@ -763,6 +772,11 @@ const dateCfg = (extra = {}) => ({ type: 'custom:timeflow-card', target_date: '2
 
 {
   check('Labels: known key uses its table entry', computeLabel({ name: 'timer_entity' }) === 'Timer Entity');
+  check('Labels: dynamic countdowns have a clear label',
+    computeLabel({ name: 'countdowns_template' }) === 'Dynamic Countdowns');
+  check('Helpers: dynamic countdowns explain JSON and append order',
+    computeHelper({ name: 'countdowns_template' }).includes('JSON array')
+      && computeHelper({ name: 'countdowns_template' }).includes('appended'));
   check('Labels: explicit label wins', computeLabel({ name: 'timer_entity', label: 'Custom' }) === 'Custom');
   check('Labels: unknown key is title-cased', computeLabel({ name: 'some_new_key' }) === 'Some New Key');
   check('Helpers: missing helper is empty, not undefined', computeHelper({ name: 'nope' }) === '');

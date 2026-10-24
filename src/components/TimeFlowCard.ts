@@ -14,6 +14,7 @@ import { createActionHandler, createHandleAction } from '../utils/action-handler
 import { getLocalizedEventyLabel } from '../utils/TimeUtils';
 import '../utils/ErrorDisplay';
 import { CountdownScheduler, WakePlan, IDLE_WAKE_CAP_MS } from '../utils/CountdownScheduler';
+import { combineCountdownEntries, countdownEntriesEqual, parseCountdownTemplate } from '../utils/CountdownTemplate';
 
 // Minimal-square defaults. The style is designed around a thick ring with a
 // single value inside it; the type scale in _renderMinimalSquareCard() is
@@ -1273,8 +1274,36 @@ export class TimeFlowCard extends LitElement {
     // If we have critical configuration errors, skip updates
     if (this._validationResult?.hasCriticalErrors) return;
 
+    this.templateService.beginPass();
+
     // Clone config for resolution
-    const resolvedConfig = { ...this.config };
+    const config = this.config;
+    const resolvedConfig = { ...config };
+
+    const countdownsTemplate = config.countdowns_template;
+    if (config.style === 'listy'
+      && typeof countdownsTemplate === 'string'
+      && countdownsTemplate.trim().length > 0) {
+      let generatedEntries: ListEntryConfig[] = [];
+      try {
+        // The Home Assistant subscription supplies both rendered JSON and its
+        // entity dependency list; do not evaluate Jinja in the browser.
+        generatedEntries = parseCountdownTemplate(
+          await this.templateService.evaluateTemplate(countdownsTemplate, this.hass)
+        );
+      } catch {
+        console.warn('[TimeFlow] Could not evaluate countdowns_template.');
+      }
+
+      // A config may change while the template subscription is resolving. Its
+      // queued pass owns the result; never publish entries from this snapshot.
+      if (this.config !== config) return;
+
+      const combinedEntries = combineCountdownEntries(config.countdowns, generatedEntries);
+      resolvedConfig.countdowns = countdownEntriesEqual(this._resolvedConfig.countdowns, combinedEntries)
+        ? this._resolvedConfig.countdowns
+        : combinedEntries;
+    }
 
     // List of config keys that can be templates
     const templateKeys = [
@@ -1340,6 +1369,7 @@ export class TimeFlowCard extends LitElement {
     if (pendingTemplates.length > 0) {
       await Promise.all(pendingTemplates);
     }
+    if (this.config !== config) return;
 
     // Publish the config only when something in it actually moved. It is a fresh
     // object literal every pass and Lit compares by identity, so assigning it
@@ -1378,6 +1408,9 @@ export class TimeFlowCard extends LitElement {
       this._listRows = [];
       this._listTimers = [];
     }
+
+    if (this.config !== config) return;
+    await this.templateService.reconcileTemplates();
 
     const signature = this._computeDisplaySignature();
     const displayChanged = signature !== this._displaySignature;
