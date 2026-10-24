@@ -370,7 +370,7 @@ function countdownsSection(caps: StyleCapabilities): FormSchema[] {
   // field needs.
   return [
     { type: 'tf_countdowns', name: 'countdowns' },
-    { name: 'countdowns_template', selector: { text: { multiline: true } } },
+    { name: 'countdowns_template', selector: { template: {} } },
   ];
 }
 

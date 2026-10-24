@@ -380,8 +380,8 @@ const dateCfg = (extra = {}) => ({ type: 'custom:timeflow-card', target_date: '2
     fieldNames(computeSchema({ style: 'listy' })).includes('max_timers'));
   const listyFields = fields(computeSchema({ style: 'listy' }));
   const dynamicCountdowns = listyFields.find((field) => field.name === 'countdowns_template');
-  check('Listy: dynamic countdown template is a multiline text field',
-    !!dynamicCountdowns && dynamicCountdowns.selector?.text?.multiline === true);
+  check('Listy: dynamic countdown template uses the Jinja code editor',
+    !!dynamicCountdowns && !!dynamicCountdowns.selector?.template);
   check('Listy: manual countdown editor remains available',
     listyFields.some((field) => field.type === 'tf_countdowns' && field.name === 'countdowns'));
   check('Listy: dynamic countdown field is hidden from other styles',
