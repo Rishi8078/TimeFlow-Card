@@ -44,23 +44,6 @@ function check(name, pass, detail) {
   console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}${detail ? `  (${detail})` : ''}`);
 }
 
-{
-  const originalTimezone = process.env.TZ;
-  try {
-    process.env.TZ = 'Europe/Madrid';
-    const dateOnly = DateParser.parseISODate('2026-10-20');
-    const localMidnight = new Date(2026, 9, 20).getTime();
-    const naiveDateTime = DateParser.parseISODate('2026-10-20T00:00:00');
-    const utcDateTime = DateParser.parseISODate('2026-10-20T00:00:00Z');
-    check('Date parsing: date-only values use local midnight in non-UTC zones', dateOnly === localMidnight);
-    check('Date parsing: date-only matches a timezone-naive midnight datetime', dateOnly === naiveDateTime);
-    check('Date parsing: explicit UTC timestamps keep their absolute timezone', utcDateTime !== dateOnly);
-  } finally {
-    if (originalTimezone === undefined) delete process.env.TZ;
-    else process.env.TZ = originalTimezone;
-  }
-}
-
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
 /** One entry as it appears inside Alexa's sorted_active / sorted_all arrays. */

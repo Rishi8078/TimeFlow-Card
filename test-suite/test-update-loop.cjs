@@ -793,24 +793,6 @@ async function testEventRowsStayActiveUntilTheirEnd() {
       timed.card._listRows[0].state === 'finished' && timed.card._listRows[0].subtitle === 'Event ended');
     timed.card.disconnectedCallback();
 
-    const template = "{{ states('sensor.all_day_event') }}";
-    const allDay = await mountCard({
-      ...listy,
-      countdowns_template: template,
-    });
-    allDay.hass.pushTemplate(template, [{
-      title: 'All-day event',
-      target_date: '2026-08-31',
-      expired_text: 'Event ended',
-    }], { all: false, domains: [], entities: ['sensor.all_day_event'], time: false });
-    await flush();
-    await flush();
-    check('Events: date-only event remains running through its local calendar day',
-      allDay.card._listRows[0].state === 'running');
-    await allDay.clock.advance(10 * 60 * 60 * 1000 + 1000);
-    check('Events: date-only event finishes after local midnight',
-      allDay.card._listRows[0].state === 'finished' && allDay.card._listRows[0].subtitle === 'Event ended');
-    allDay.card.disconnectedCallback();
   } finally {
     if (originalTimezone === undefined) delete process.env.TZ;
     else process.env.TZ = originalTimezone;

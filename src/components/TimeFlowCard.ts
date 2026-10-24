@@ -1585,30 +1585,6 @@ export class TimeFlowCard extends LitElement {
     return resolved;
   }
 
-  private _withAllDayEventWindow(entry: CardConfig): CardConfig {
-    const targetDate = entry.target_date;
-    if (entry.mode === 'count_up'
-      || typeof targetDate !== 'string'
-      || !/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) return entry;
-
-    const startTimestamp = DateParser.parseISODate(targetDate);
-    if (!Number.isFinite(startTimestamp)) return entry;
-
-    const endDate = new Date(startTimestamp);
-    endDate.setDate(endDate.getDate() + 1);
-    const endDateString = [
-      endDate.getFullYear(),
-      String(endDate.getMonth() + 1).padStart(2, '0'),
-      String(endDate.getDate()).padStart(2, '0'),
-    ].join('-');
-
-    return {
-      ...entry,
-      creation_date: entry.creation_date || targetDate,
-      target_date: endDateString,
-    };
-  }
-
   /**
    * The label-free half of a timer row's subtitle, for rows whose title already
    * carries the name. The device is appended only when the list spans more than
@@ -1649,9 +1625,6 @@ export class TimeFlowCard extends LitElement {
    */
   private async _buildEntryRows(config: CardConfig): Promise<ListRow[]> {
     const entries = Array.isArray(config.countdowns) ? config.countdowns : [];
-    const generatedEntryStart = Array.isArray(this.config.countdowns)
-      ? this.config.countdowns.length
-      : 0;
     this._listEntryDeadlineMs = null;
     if (entries.length === 0) return [];
     let soonestMs = Number.POSITIVE_INFINITY;
@@ -1663,10 +1636,7 @@ export class TimeFlowCard extends LitElement {
       const entry = entries[index];
       if (!entry || typeof entry !== 'object') continue;
 
-      const resolvedEntry = await this._resolveEntryTemplates(entry);
-      const entryConfig = index >= generatedEntryStart
-        ? this._withAllDayEventWindow(resolvedEntry)
-        : resolvedEntry;
+      const entryConfig = await this._resolveEntryTemplates(entry);
       const service = this._entryCountdown;
       service.beginPass();
 
