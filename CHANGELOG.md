@@ -5,6 +5,17 @@ All notable changes to TimeFlow Card will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0/).
 
+## [4.1.0] - 2026-11-12
+
+### Added
+
+- **`countdowns_template`**: a Jinja template that returns a JSON list of countdowns for a `listy` card, so birthdays, trash days or calendar events can fill the list on their own. Thanks @tamaygz ([#65](https://github.com/Rishi8078/TimeFlow-Card/pull/65))
+- **`show_name_in_countdown`**: set it to `false` to leave the timer's name out of the countdown line on Alexa and Google Home timers, e.g. "4m remaining" instead of "4m remaining on Tea timer" ([#61](https://github.com/Rishi8078/TimeFlow-Card/issues/61))
+
+### Fixed
+
+- **Alexa timers on non-English setups** are found again. Newer Alexa Media Player versions name the sensor in your language (`sensor.kueche_nachster_timer`), and the card only knew the English name. The device name now comes from Home Assistant too, so it reads "Küche" rather than "Küche Nächster" ([#68](https://github.com/Rishi8078/TimeFlow-Card/issues/68))
+
 ## [4.0.0] - 2026-09-19
 
 One card can now show every running timer, and the visual editor was rebuilt around what each style can actually draw.
