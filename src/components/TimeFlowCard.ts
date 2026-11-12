@@ -1677,7 +1677,7 @@ export class TimeFlowCard extends LitElement {
         : null;
 
       const kind: ListRowKind = timerEntity
-        ? (TimerEntityService.isAlexaTimer(timerEntity)
+        ? (TimerEntityService.isAlexaTimer(timerEntity, this.hass)
             ? 'alexa'
             : TimerEntityService.isGoogleTimer(timerEntity) ? 'google' : 'timer')
         : 'event';

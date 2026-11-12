@@ -240,8 +240,8 @@ export class AlexaTimerService {
     progress,
     finished: isFinished,
       isAlexaTimer: true,
-      alexaDevice: this.extractAlexaDevice(entityId, attributes),
-      timerLabel: label ?? this.extractAlexaDevice(entityId, attributes),
+      alexaDevice: this.extractAlexaDevice(entityId, attributes, hass),
+      timerLabel: label ?? this.extractAlexaDevice(entityId, attributes, hass),
     timerStatus: isPaused ? 'PAUSED' : (isActive ? 'ON' : 'OFF'),
       userDefinedLabel: label,
     };
@@ -262,11 +262,11 @@ export class AlexaTimerService {
    * @param entity - Entity state object
    * @returns TimerData[] - One entry per live timer, unsorted
    */
-  static parseAllTimers(entityId: string, entity: any): TimerData[] {
+  static parseAllTimers(entityId: string, entity: any, hass?: HomeAssistant): TimerData[] {
     const attributes = entity?.attributes || {};
     const activeTimers = this.parseJson(attributes.sorted_active) ?? [];
     const allTimers = this.parseJson(attributes.sorted_all) ?? [];
-    const device = this.extractAlexaDevice(entityId, attributes);
+    const device = this.extractAlexaDevice(entityId, attributes, hass);
     const now = Date.now();
 
     const timers: TimerData[] = [];
@@ -602,7 +602,14 @@ export class AlexaTimerService {
    * @param attributes - Entity attributes
    * @returns string - Device name
    */
-  private static extractAlexaDevice(entityId: string, attributes: any): string {
+  private static extractAlexaDevice(entityId: string, attributes: any, hass?: HomeAssistant): string {
+    // The device registry names the Echo in any language; friendly_name carries a
+    // translated "Next timer" suffix (#68) the cleanup below only knows in English.
+    const deviceId = hass?.entities?.[entityId]?.device_id;
+    const device = deviceId ? hass?.devices?.[deviceId] : undefined;
+    const registryName = (device?.name_by_user || device?.name)?.trim();
+    if (registryName) return registryName;
+
     // First try to clean up friendly_name if it exists
     if (attributes.friendly_name) {
       let deviceName = attributes.friendly_name;

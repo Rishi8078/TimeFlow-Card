@@ -245,6 +245,31 @@ function hassWith(states) {
 }
 
 {
+  // #68: a German install names the sensor "Nächster Timer"; the registry's
+  // translation_key is what still says it is an Alexa timer.
+  const DE = 'sensor.kueche_nachster_timer';
+  const now = Date.now();
+  const hass = {
+    states: { [DE]: alexaEntity([alexaTimer('a1', 'Tee', 'ON', 60000, now + 60000, 300000)], undefined, 'Küche Nächster Timer') },
+    entities: {
+      [DE]: { platform: 'alexa_media', translation_key: 'next_timer', device_id: 'echo1' },
+      'sensor.kueche_next_alarm': { platform: 'alexa_media', translation_key: 'next_alarm' },
+    },
+    devices: { echo1: { name: 'Küche', name_by_user: null } },
+  };
+  check('Alexa: a localized sensor is recognised', TimerEntityService.isAlexaTimer(DE, hass));
+  check('Alexa: an Alexa alarm sensor is not a timer', !TimerEntityService.isAlexaTimer('sensor.kueche_next_alarm', hass));
+  check('Alexa: a localized sensor is discovered', TimerEntityService.discoverAlexaTimers(hass).includes(DE));
+  const rows = TimerEntityService.listTimers(DE, hass);
+  check('Alexa: a localized sensor parses as Alexa', rows.length === 1 && rows[0].isAlexaTimer, JSON.stringify(rows));
+  check('Alexa: the device name comes from the registry', rows[0].deviceName === 'Küche', rows[0].deviceName);
+  check('Alexa: the single-timer path uses it too',
+    TimerEntityService.getTimerData(DE, hass).alexaDevice === 'Küche');
+  hass.devices.echo1.name_by_user = 'Küchen-Echo';
+  check('Alexa: a name the user gave the device wins', TimerEntityService.listTimers(DE, hass)[0].deviceName === 'Küchen-Echo');
+}
+
+{
   // A paused timer leaves sorted_active and lives on in sorted_all.
   const now = Date.now();
   const active = [alexaTimer('a1', 'Pasta', 'ON', 300000, now + 300000, 600000)];

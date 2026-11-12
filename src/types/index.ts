@@ -18,6 +18,8 @@ export interface HomeAssistant {
     language: string;
     [key: string]: any;
   };
+  entities?: { [entity_id: string]: { platform?: string; translation_key?: string; device_id?: string } };
+  devices?: { [device_id: string]: { name?: string | null; name_by_user?: string | null } };
   // Add other HA properties as needed
 }
 

@@ -79,10 +79,15 @@ export class TimerEntityService {
   /**
    * Checks if entity is an Alexa timer specifically
    * @param entityId - Entity ID to check
+   * @param hass - When given, the entity registry decides, so a localized ID (#68) is still found
    * @returns boolean - Whether this is an Alexa timer
    */
-  static isAlexaTimer(entityId: string): boolean {
-    return entityId.includes('_next_timer') || 
+  static isAlexaTimer(entityId: string, hass?: HomeAssistant): boolean {
+    // Alexa Media Player names the sensor in the user's language
+    // (sensor.kueche_nachster_timer), but its translation_key stays "next_timer".
+    const reg = hass?.entities?.[entityId];
+    if (reg?.platform === 'alexa_media') return reg.translation_key === 'next_timer';
+    return entityId.includes('_next_timer') ||
            entityId.includes('alexa_timer') || 
            (entityId.startsWith('sensor.') && entityId.includes('alexa') && entityId.includes('timer'));
   }
@@ -128,7 +133,7 @@ export class TimerEntityService {
     }
 
     // Handle Alexa timers
-    if (this.isAlexaTimer(entityId)) {
+    if (this.isAlexaTimer(entityId, hass)) {
       return AlexaTimerService.getAlexaTimerData(
         entityId, 
         entity, 
@@ -183,8 +188,8 @@ export class TimerEntityService {
       return [];
     }
 
-    if (this.isAlexaTimer(entityId)) {
-      return AlexaTimerService.parseAllTimers(entityId, entity);
+    if (this.isAlexaTimer(entityId, hass)) {
+      return AlexaTimerService.parseAllTimers(entityId, entity, hass);
     }
 
     if (this.isGoogleTimer(entityId)) {
@@ -221,7 +226,7 @@ export class TimerEntityService {
   static discoverAlexaTimers(hass: HomeAssistant, onCandidate?: (entityId: string) => void): string[] {
     return AlexaTimerService.discoverAlexaTimers(
       hass, 
-      (entityId: string) => this.isAlexaTimer(entityId), 
+      (entityId: string) => this.isAlexaTimer(entityId, hass), 
       (entityId: string, hass: HomeAssistant) => this.getTimerData(entityId, hass),
       onCandidate
     );
@@ -446,7 +451,7 @@ export class TimerEntityService {
     }
 
     // Handle Alexa timers
-    if (this.isAlexaTimer(entityId)) {
+    if (this.isAlexaTimer(entityId, hass)) {
       const timerData = AlexaTimerService.getAlexaTimerData(
         entityId, 
         entity, 
