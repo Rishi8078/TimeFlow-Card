@@ -994,6 +994,26 @@ async function testListyStyleCarriesTimerEntityOver() {
     JSON.stringify(cfg));
 }
 
+// show_name_in_countdown defaults to on, and the form echoes every field it
+// shows on any change, so "on" must not be written into the user's YAML.
+async function testNameSwitchOnlyStoresOff() {
+  const context = loadBundle(createClock(Date.UTC(2026, 7, 31, 12, 0, 0)));
+  context.CustomEvent = class { constructor(type, init = {}) { this.type = type; this.detail = init.detail; } };
+  const Editor = context.customElements.get('timeflow-card-editor');
+  const editor = new Editor();
+  editor._config = { type: 'custom:timeflow-card', timer_entity: 'sensor.kitchen_next_timer' };
+
+  editor._formChanged({ detail: { value: { show_name_in_countdown: true } } });
+  check('Editor: the name switch left on writes nothing', !('show_name_in_countdown' in editor._config),
+    JSON.stringify(editor._config));
+
+  editor._formChanged({ detail: { value: { show_name_in_countdown: false } } });
+  check('Editor: the name switch turned off is stored', editor._config.show_name_in_countdown === false);
+
+  editor._formChanged({ detail: { value: { show_name_in_countdown: true } } });
+  check('Editor: turning it back on removes the key', !('show_name_in_countdown' in editor._config));
+}
+
 // Discovered rows take their colours from the brand palette; text colour was the
 // one the styling section never offered.
 async function testBrandTextColourReachesTheRow() {
@@ -1090,6 +1110,7 @@ async function testDelayedTemplateSubscriptionPassesAreSerialized() {
   await testNoTemplatePreservesCountdownConfig();
   await testYamlModeFollowsItsEntry();
   await testListyStyleCarriesTimerEntityOver();
+  await testNameSwitchOnlyStoresOff();
   await testBrandTextColourReachesTheRow();
   await testExpiryIsNotMissedByBackoff();
   await testLongCountdownDoesNotSpin();

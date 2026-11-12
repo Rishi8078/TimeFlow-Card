@@ -2088,14 +2088,16 @@ export class TimeFlowCard extends LitElement {
             timerData,
             this._resolvedConfig.show_seconds !== false,
             this._localize || undefined,
-            timeFormatCompact
+            timeFormatCompact,
+            this._resolvedConfig.show_name_in_countdown !== false
           );
         } else if (!this._expired) {
           subtitleText = subtitle || TimerEntityService.getTimerSubtitle(
             timerData,
             this._resolvedConfig.show_seconds !== false,
             this._localize || undefined,
-            timeFormatCompact
+            timeFormatCompact,
+            this._resolvedConfig.show_name_in_countdown !== false
           );
         } else {
           subtitleText = expired_text || this.countdownService.getSubtitle(this._resolvedConfig, this.hass, this._localize || undefined, timeFormatCompact);

@@ -540,13 +540,15 @@ export class TimerEntityService {
    * @param showSeconds - Whether to show seconds in display
    * @param localize - Localization function for translating status text
    * @param useCompact - Whether to use compact format for time (default: true)
+   * @param showName - false leaves the timer's name and device out (show_name_in_countdown)
    * @returns string - Subtitle text
    */
   static getTimerSubtitle(
     timerData: TimerData,
     showSeconds: boolean = true,
     localize?: LocalizeFunction,
-    useCompact: boolean = true
+    useCompact: boolean = true,
+    showName: boolean = true
   ): string {
     if (!timerData) {
       return 'Timer not found';
@@ -554,6 +556,17 @@ export class TimerEntityService {
 
     // Use localize if provided, otherwise provide backward compatibility
     const t = localize || ((key: string) => key);
+
+    // show_name_in_countdown: false - the header already names the timer, so
+    // the line carries the status alone. Only Alexa and Google lines name
+    // anything; an idle one falls through to its usual "no timers" text.
+    if (!showName && (timerData.isAlexaTimer || timerData.isGoogleTimer)) {
+      const time = this.formatRemainingTime(timerData.remaining, showSeconds, localize, useCompact);
+      if (timerData.finished || timerData.googleTimerStatus === 'ringing') return t('timer.complete');
+      if (timerData.isActive && timerData.remaining > 0) return t('timer.remaining', { time });
+      if (timerData.isPaused && timerData.remaining > 0) return t('timer.paused_without_label', { time });
+      if (timerData.remaining === 0 && timerData.progress >= 100) return t('timer.complete');
+    }
 
     if (timerData.isAlexaTimer) {
       if (timerData.finished) {

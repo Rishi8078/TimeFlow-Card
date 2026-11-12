@@ -411,7 +411,7 @@ const dateCfg = (extra = {}) => ({ type: 'custom:timeflow-card', target_date: '2
 {
   const { computeSourceSchema, computeHideWhenInactiveSchema, computeDiscoverySchema,
           computeCountdownsSchema, computeTextSchema, computeExpiredSchema, computeUnitsSchema,
-          computePanelsSchema } =
+          computePanelsSchema, computeNameInCountdownSchema } =
     require(path.join(outDir, 'editor', 'schema.js'));
 
   for (const style of STYLES) {
@@ -426,7 +426,7 @@ const dateCfg = (extra = {}) => ({ type: 'custom:timeflow-card', target_date: '2
         ...computeSourceSchema(cfg), ...computeHideWhenInactiveSchema(cfg),
         ...computeCountdownsSchema(cfg), ...computeDiscoverySchema(cfg),
         ...computeTextSchema(cfg), ...computeExpiredSchema(cfg), ...computeUnitsSchema(cfg),
-        ...computePanelsSchema(cfg),
+        ...computeNameInCountdownSchema(cfg), ...computePanelsSchema(cfg),
       ]);
       if (whole !== parts) {
         check(`Split: parts reassemble on ${style}`, false, JSON.stringify(cfg));
@@ -444,6 +444,14 @@ const dateCfg = (extra = {}) => ({ type: 'custom:timeflow-card', target_date: '2
     middle.join(',') === 'subtitle_prefix,subtitle_suffix', middle.join(','));
   const units = fieldNames(computeUnitsSchema(dateCfg()));
   check('Split: the units part carries the toggles', units.includes('show_days') && units.includes('show_seconds'));
+
+  // show_name_in_countdown (#61) follows the line it changes: a timer's
+  // countdown line, which a date card and eventy never draw.
+  const nameSwitch = (cfg) => fieldNames(computeNameInCountdownSchema(cfg)).includes('show_name_in_countdown');
+  check('Name switch: offered for a timer entity', nameSwitch({ timer_entity: 'sensor.x_next_timer' }));
+  check('Name switch: offered for auto-discovery', nameSwitch({ style: 'classic-compact', auto_discover_alexa: true }));
+  check('Name switch: not offered for a date card', !nameSwitch(dateCfg()));
+  check('Name switch: not offered on eventy', !nameSwitch({ style: 'eventy', timer_entity: 'sensor.x_next_timer' }));
   check('Split: compact_format rides with the units', units.includes('compact_format'));
 
   // expired_animation belongs with the expired text, not with the colours.

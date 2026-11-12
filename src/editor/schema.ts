@@ -529,6 +529,7 @@ export function computeSchema(config: CardConfig, source?: SourceType): FormSche
     ...computeTextSchema(config, source),
     ...computeExpiredSchema(config),
     ...computeUnitsSchema(config),
+    ...computeNameInCountdownSchema(config, source),
     ...computePanelsSchema(config),
   ];
 }
@@ -590,6 +591,17 @@ export function computeExpiredSchema(config: CardConfig): FormSchema[] {
 export function computeUnitsSchema(config: CardConfig): FormSchema[] {
   if (getStyle(config) === 'listy') return [];
   return timeUnitsSection(getCapabilities(config));
+}
+
+/**
+ * The show_name_in_countdown switch, which the editor renders beside a heading
+ * of its own so its explanation can sit on hover. Only a timer's countdown
+ * line names anything, and eventy puts a date there.
+ */
+export function computeNameInCountdownSchema(config: CardConfig, source?: SourceType): FormSchema[] {
+  if (!getCapabilities(config).subtitle || getStyle(config) === 'eventy'
+      || usesDateFields(source ?? getSourceType(config))) return [];
+  return [{ name: 'show_name_in_countdown', selector: { boolean: {} } }];
 }
 
 /** The collapsible panels at the foot of the form. */

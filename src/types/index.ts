@@ -182,6 +182,7 @@ export interface CardConfig {
   auto_discover_google?: boolean; // NEW: Automatically find and use Google Home timers
   auto_discover_voice_satellite?: boolean; // Timers held by Voice Satellite assist_satellite entities
   auto_discover_timers?: boolean; // Home Assistant's own native timer.* entities
+  show_name_in_countdown?: boolean; // false drops the timer's name/device from the countdown line (default true)
 
   // Multi-timer list ('listy' style)
   max_timers?: number;            // Timer rows to draw before the list is truncated (default 5)

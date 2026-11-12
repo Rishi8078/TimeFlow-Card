@@ -4,7 +4,7 @@ import { CardConfig } from '../types/index';
 import '../editor/ha-form-tf-template';
 import '../editor/ha-form-tf-group';
 import '../editor/ha-form-tf-countdowns';
-import { STYLE_OPTIONS, computeExpiredSchema, computePanelsSchema, computeSourceSchema, computeHideWhenInactiveSchema, computeTextSchema, computeCountdownsSchema, computeDiscoverySchema, computeUnitsSchema, styleSchema } from '../editor/schema';
+import { STYLE_OPTIONS, computeExpiredSchema, computePanelsSchema, computeSourceSchema, computeHideWhenInactiveSchema, computeNameInCountdownSchema, computeTextSchema, computeCountdownsSchema, computeDiscoverySchema, computeUnitsSchema, styleSchema } from '../editor/schema';
 import { SourceType, applySource, availableSources, getCapabilities, getSourceType, getStyle, resolveSource, usesDateFields } from '../editor/capabilities';
 import { computeLabel, computeHelper } from '../editor/labels';
 
@@ -235,6 +235,15 @@ export class TimeFlowCardEditor extends LitElement {
                 display: block;
                 width: 100%;
             }
+            /* A switch row inside the group reads as one of its fields: the
+               form shrinks back to the switch so the label keeps its line, and
+               the label drops the heading weight. */
+            .units-section .editor-row ha-form {
+                width: auto;
+            }
+            .units-section .editor-row .editor-section-label {
+                font-weight: 400;
+            }
 
             /* The same, tinted: for a section holding several fields that need
                to read as one group. The tint is mixed from the text colour so
@@ -368,6 +377,10 @@ export class TimeFlowCardEditor extends LitElement {
         if (!wasExplicit && value.compact_format === previousDisplayedCompactFormat) {
             delete newConfig.compact_format;
         }
+        // On is the default, so only an explicit "off" is worth writing down.
+        if (newConfig.show_name_in_countdown === true) {
+            delete newConfig.show_name_in_countdown;
+        }
 
         this._config = newConfig;
         this._fireConfigChanged(newConfig);
@@ -416,20 +429,17 @@ export class TimeFlowCardEditor extends LitElement {
     }
 
     /**
-     * hide_when_inactive: one switch whose explanation is a sentence long.
+     * One switch whose explanation is a sentence long: hide_when_inactive and
+     * show_name_in_countdown.
      *
-     * Rendered outside the source form so that sentence can sit on hover
+     * Rendered outside the other forms so that sentence can sit on hover
      * instead of under the field - ha-tooltip binds by id within this shadow
      * root, which is something nothing inside ha-form can offer.
      */
-    private _renderHideWhenInactive(displayCfg: CardConfig, schema: unknown[]): TemplateResult {
+    private _renderSwitchRow(id: string, label: string, help: string, displayCfg: CardConfig, schema: unknown[]): TemplateResult {
         return html`
             <div class="editor-row">
-                ${this._sectionHeading(
-                    'sec-hide-inactive',
-                    'Hide When Inactive',
-                    'Removes the card from the view while there is nothing to count: before the start date, and once the target or goal date has passed.'
-                )}
+                ${this._sectionHeading(id, label, help)}
                 <ha-form
                     .hass=${this.hass}
                     .data=${displayCfg}
@@ -769,7 +779,9 @@ export class TimeFlowCardEditor extends LitElement {
             ...cfg,
             mode,
             // Show the effective compact_format value for UI consistency
-            compact_format: this._getEffectiveCompactFormat()
+            compact_format: this._getEffectiveCompactFormat(),
+            // Unset means on, and a bare switch would draw unset as off.
+            show_name_in_countdown: cfg.show_name_in_countdown !== false
         };
 
         const source = resolveSource(displayCfg as CardConfig, this._pendingSource);
@@ -780,6 +792,7 @@ export class TimeFlowCardEditor extends LitElement {
         const countdownsSchema = computeCountdownsSchema(displayCfg as CardConfig);
         const expiredSchema = computeExpiredSchema(displayCfg as CardConfig);
         const unitsSchema = computeUnitsSchema(displayCfg as CardConfig);
+        const nameSchema = computeNameInCountdownSchema(displayCfg as CardConfig, source);
         const panelsSchema = computePanelsSchema(displayCfg as CardConfig);
         const caps = getCapabilities(displayCfg as CardConfig);
         const showsTitle = caps.title;
@@ -821,7 +834,11 @@ export class TimeFlowCardEditor extends LitElement {
             ${dateFields}
             ${isList ? nothing : this._renderSourceFields(displayCfg as CardConfig, sourceSchema, source)}
             ${hideInactiveSchema.length > 0
-                ? this._renderHideWhenInactive(displayCfg as CardConfig, hideInactiveSchema)
+                ? this._renderSwitchRow(
+                    'sec-hide-inactive',
+                    'Hide When Inactive',
+                    'Removes the card from the view while there is nothing to count: before the start date, and once the target or goal date has passed.',
+                    displayCfg as CardConfig, hideInactiveSchema)
                 : nothing}
             ${isList && showsTitle ? this._renderTitleField() : nothing}
             <!-- computeLabel is deliberately not blanked here: ha-form hands it
@@ -898,6 +915,16 @@ export class TimeFlowCardEditor extends LitElement {
                         .computeLabel=${computeLabel}
                         .computeHelper=${this._computeHelper}
                     ></ha-form>
+                    <!-- Inside the group, under Compact Format: both word the
+                         countdown line, and out on its own this switch lined
+                         up with neither the group's labels nor its switches. -->
+                    ${nameSchema.length > 0
+                        ? this._renderSwitchRow(
+                            'sec-name-in-countdown',
+                            'Timer Name in Countdown',
+                            'Adds the timer or device name after the time, e.g. "4m remaining on Tea timer". Alexa and Google Home timers only.',
+                            displayCfg as CardConfig, nameSchema)
+                        : nothing}
                 </div>
             ` : nothing}
             <ha-form

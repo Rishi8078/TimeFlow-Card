@@ -72,6 +72,7 @@ If `timer_entity` or smart-timer auto-discovery is used, timer data takes priori
 | `show_minutes` | boolean | `true` | Show minutes in the elapsed or remaining time output. |
 | `show_seconds` | boolean | `true` | Show seconds in the elapsed or remaining time output. |
 | `compact_format` | boolean | auto | Use compact unit formatting such as `2d 5h 30m`. When unset, compact formatting is auto-enabled when 3 or more units are shown. |
+| `show_name_in_countdown` | boolean | `true` | Alexa and Google Home timers: `false` leaves the timer's name out of the countdown line. |
 | `text_color` | string | theme | Primary text color. Supports templates. |
 | `background_color` | string | theme | Card background color. Supports templates. |
 | `progress_color` | string | theme | Progress-circle color. Supports templates. |

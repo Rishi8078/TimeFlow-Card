@@ -774,10 +774,10 @@ export class CountdownService {
       if (timerData) {
         // For smart assistant timers, always use their specific subtitle logic
         if (timerData.isAlexaTimer || timerData.isGoogleTimer) {
-          return TimerEntityService.getTimerSubtitle(timerData, config.show_seconds !== false, localize, useCompact);
+          return TimerEntityService.getTimerSubtitle(timerData, config.show_seconds !== false, localize, useCompact, config.show_name_in_countdown !== false);
         }
         // For standard HA timers, use the timer subtitle if available
-        return TimerEntityService.getTimerSubtitle(timerData, config.show_seconds !== false, localize, useCompact);
+        return TimerEntityService.getTimerSubtitle(timerData, config.show_seconds !== false, localize, useCompact, config.show_name_in_countdown !== false);
       }
       return 'Timer not found';
     }
@@ -789,14 +789,14 @@ export class CountdownService {
         // Cache for finished fallback
         this.lastAlexaTimerData = smartTimerData;
         this.timeRemaining = this._timerDataToCountdownState(smartTimerData);
-        return TimerEntityService.getTimerSubtitle(smartTimerData, config.show_seconds !== false, localize, useCompact);
+        return TimerEntityService.getTimerSubtitle(smartTimerData, config.show_seconds !== false, localize, useCompact, config.show_name_in_countdown !== false);
       }
 
       // Check if auto-discovery was enabled but no timer found
       if (TimerEntityService.hasAutoDiscovery(config)) {
         // Fallback: if we have a cached timer that just finished, show its subtitle
         if (this.lastAlexaTimerData && TimerEntityService.isTimerExpired(this.lastAlexaTimerData)) {
-          return TimerEntityService.getTimerSubtitle(this.lastAlexaTimerData, config.show_seconds !== false, localize, useCompact);
+          return TimerEntityService.getTimerSubtitle(this.lastAlexaTimerData, config.show_seconds !== false, localize, useCompact, config.show_name_in_countdown !== false);
         }
         // No smart timer entities were discovered at all
         return t('timer.no_timers');

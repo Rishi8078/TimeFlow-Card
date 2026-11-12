@@ -622,6 +622,27 @@ function hassWith(states) {
     !TimerEntityService.isAlexaTimer('timer.sprinkler') && !TimerEntityService.isGoogleTimer('timer.sprinkler'));
 }
 
+// show_name_in_countdown: false (#61). No localize is passed, so the subtitle
+// comes back as its translation key, which is what these compare.
+{
+  const tea = { isAlexaTimer: true, isActive: true, isPaused: false, remaining: 272, duration: 300,
+    progress: 10, finishesAt: null, userDefinedLabel: 'Tea', alexaDevice: 'Kitchen' };
+  const sub = (data, showName) => TimerEntityService.getTimerSubtitle(data, true, undefined, true, showName);
+
+  check('Name toggle: the default still names the timer', sub(tea) === 'timer.remaining_with_label');
+  check('Name toggle: off leaves the time alone', sub(tea, false) === 'timer.remaining');
+  check('Name toggle: off drops the device from an unnamed timer',
+    sub({ ...tea, userDefinedLabel: undefined }, false) === 'timer.remaining');
+  check('Name toggle: off, paused',
+    sub({ ...tea, isActive: false, isPaused: true }, false) === 'timer.paused_without_label');
+  check('Name toggle: off, finished', sub({ ...tea, finished: true }, false) === 'timer.complete');
+  check('Name toggle: off, an idle device keeps its usual text',
+    sub({ ...tea, isActive: false, remaining: 0, progress: 0 }, false) === 'timer.no_timers_device');
+  check('Name toggle: off, a Google timer',
+    sub({ isGoogleTimer: true, isActive: true, isPaused: false, remaining: 60, duration: 60, progress: 0,
+      finishesAt: null, userDefinedLabel: 'Eggs' }, false) === 'timer.remaining');
+}
+
 // ── Summary ─────────────────────────────────────────────────────────────────
 
 const failed = results.filter((r) => !r.pass);
