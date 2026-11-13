@@ -932,6 +932,7 @@ Thanks to everyone who has covered TimeFlow Card on YouTube.
 | [Steuer dein Leben](https://www.youtube.com/@SteuerdeinLeben) | [2 geniale Timer Karten für Home Assistant – auch mit Alexa nutzbar!](https://www.youtube.com/watch?v=DjA5e2sQDo8&t=260s) 🇩🇪 |
 | [Mark Watt Tech](https://www.youtube.com/@MarkWattTech) | [5 Frontend HACS for Home Assistant (Custom Cards)](https://www.youtube.com/watch?v=wvNfXmEyGg4&t=127s) 🇬🇧 |
 | [Byte of Geek](https://www.youtube.com/@Byteofgeek) | [I Found 5 Home Assistant Dashboard Cards You NEED to See in 2026](https://www.youtube.com/watch?v=Xc7X43DSfCM) 🇬🇧 |
+| [CTech&Media](https://www.youtube.com/@CTechMedia) | [Das hat Home Assistant gefehlt: Smarte Timer & Countdowns](https://www.youtube.com/watch?v=a3NdUzjmHGY) 🇩🇪 |
 
 Covered the card somewhere I've missed? [Open an issue](https://github.com/Rishi8078/TimeFlow-Card/issues) and I'll add it.
 
